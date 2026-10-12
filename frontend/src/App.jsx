@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
 function App() {
@@ -13,6 +13,21 @@ function App() {
   const [selectedJob, setSelectedJob] = useState(null)
   const [showLogin, setShowLogin] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
+  const [authMessage, setAuthMessage] = useState('')
+  const [registerRole, setRegisterRole] = useState('candidate')
+  const previousScrollPosition = useRef(null)
+
+  const activeFiltersCount = [
+    search.trim(),
+    category,
+    contractType,
+    publicationPeriod,
+    minimumSalary,
+    workMode,
+    workingTime,
+    experienceLevel,
+  ].filter((value) => value !== '').length
 
   const jobs = [
     {
@@ -77,9 +92,17 @@ function App() {
     },
   ]
 
+  function normalizeText(text) {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+  }
+
   const filteredJobs = jobs
     .filter((job) =>
-      job.title.toLowerCase().includes(search.trim().toLowerCase())
+      normalizeText(job.title).includes(normalizeText(search))
     )
     .filter((job) => category === '' || job.category === category)
     .filter((job) => contractType === '' || job.contractType === contractType)
@@ -105,10 +128,69 @@ function App() {
       experienceLevel === '' || job.experienceLevel === experienceLevel
     )
 
-  const visibleSelectedJob = filteredJobs.find(
-    (job) => job.id === selectedJob?.id
-  )
+  useEffect(() => {
+    const reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches
 
+    if (selectedJob) {
+      const details = document.getElementById(
+        `job-details-${selectedJob.id}`
+      )
+
+      if (details && !details.hidden) {
+        details.scrollIntoView({
+          behavior: reducedMotion ? 'instant' : 'smooth',
+          block: 'start',
+        })
+      }
+    } else if (previousScrollPosition.current !== null) {
+      window.scrollTo({
+        top: previousScrollPosition.current,
+        behavior: reducedMotion ? 'instant' : 'smooth',
+      })
+
+      previousScrollPosition.current = null
+    }
+  }, [selectedJob])
+
+  function openJob(job) {
+    if (previousScrollPosition.current === null) {
+      previousScrollPosition.current = window.scrollY
+    }
+
+    setSelectedJob(job)
+  }
+  function handleAuthSubmit(event) {
+    event.preventDefault()
+
+    const formData = new FormData(event.currentTarget)
+    const password = formData.get('password')
+    const confirmation = formData.get('confirmPassword')
+    if (showRegister) {
+      const name = String(formData.get('name') ?? '').trim()
+
+      if (name === '') {
+        setAuthMessage(
+          registerRole === 'company'
+            ? 'Veuillez renseigner la raison sociale.'
+            : 'Veuillez renseigner votre nom complet.'
+        )
+        return
+      }
+    }
+
+    if (showRegister && password !== confirmation) {
+      setAuthMessage('Les deux mots de passe ne correspondent pas.')
+      return
+    }
+
+    setAuthMessage(
+      showRegister
+        ? 'Les informations sont valides. La création du compte sera disponible une fois le serveur connecté.'
+        : 'La connexion sera disponible une fois le serveur connecté.'
+    )
+  }
   function resetFilters() {
     setSearch('')
     setCategory('')
@@ -126,6 +208,7 @@ function App() {
       <header>
         <div className="header-content">
           <h1>PYJOBS</h1>
+
           <button
             type="button"
             className="login-button"
@@ -137,77 +220,157 @@ function App() {
           </button>
         </div>
 
-       {showLogin && (
-  <div id="login-panel" className="login-panel">
-    <h2>{showRegister ? 'Créer un compte' : 'Connexion'}</h2>
+        {showLogin && (
+          <div id="login-panel" className="login-panel">
+            <h2>{showRegister ? 'Créer un compte' : 'Connexion'}</h2>
 
-    <form
-      className="login-form"
-      onSubmit={(event) => event.preventDefault()}
-    >
-      {showRegister && (
-        <>
-          <label htmlFor="register-role">Type de compte</label>
-          <select id="register-role" name="role" required>
-            <option value="candidate">Candidat</option>
-            <option value="company">Société</option>
-          </select>
+            <form
+              className="login-form"
+              onSubmit={handleAuthSubmit}
+            >
+              {showRegister && (
+                <>
+                  <label htmlFor="register-role">Type de compte</label>
+                  <select
+                    id="register-role"
+                    name="role"
+                    value={registerRole}
+                    onChange={(event) => {
+                      setRegisterRole(event.target.value)
+                      setAuthMessage('')
+                    }}
+                    required
+                  >
+                    <option value="candidate">Candidat</option>
+                    <option value="company">Société</option>
+                  </select>
 
-          <label htmlFor="register-name">
-            Nom complet ou nom de la société
-          </label>
-          <input
-            id="register-name"
-            name="name"
-            type="text"
-            required
-          />
-        </>
-      )}
+                  <label htmlFor="register-name">
+                    {registerRole === 'company' ? 'Raison sociale' : 'Nom complet'}
+                  </label>
+                  <input
+                    key={registerRole}
+                    id="register-name"
+                    name="name"
+                    type="text"
+                    placeholder={
+                      registerRole === 'company'
+                        ? 'Exemple : Entreprise ABC'
+                        : 'Exemple : Mehdi Lrhoula'
+                    }
+                    required
+                  />
+                  <label htmlFor="register-phone">Téléphone (facultatif)</label>
+                  <input
+                    id="register-phone"
+                    name="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="Exemple : 06 12 34 56 78"
+                  />
+                  {registerRole === 'company' && (
+                    <>
+                      <label htmlFor="register-website">
+                        Site internet (facultatif)
+                      </label>
+                      <input
+                        id="register-website"
+                        name="website"
+                        type="url"
+                        placeholder="https://www.exemple.fr"
+                      />
+                    </>
+                  )}
+                </>
+              )}
 
-      <label htmlFor="login-email">Email</label>
-      <input
-        id="login-email"
-        name="email"
-        type="email"
-        autoComplete="username"
-        placeholder="Votre adresse email"
-        required
-      />
+              <label htmlFor="login-email">Email</label>
+              <input
+                id="login-email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                placeholder="Votre adresse email"
+                required
+              />
 
-      <label htmlFor="login-password">Mot de passe</label>
-      <input
-        key={showRegister ? 'register-password' : 'login-password'}
-        id="login-password"
-        name="password"
-        type="password"
-        autoComplete={showRegister ? 'new-password' : 'current-password'}
-        placeholder="Votre mot de passe"
-        required
-      />
+              <label htmlFor="login-password">Mot de passe</label>
+              <input
+                key={showRegister ? 'register-password' : 'login-password'}
+                id="login-password"
+                name="password"
+                type="password"
+                autoComplete={showRegister ? 'new-password' : 'current-password'}
+                placeholder="Votre mot de passe"
+                required
+              />
 
-      <button type="submit">
-        {showRegister ? 'Créer mon compte' : 'Se connecter'}
-      </button>
-    </form>
+              {showRegister && (
+                <>
+                  <label htmlFor="confirm-password">Confirmer le mot de passe</label>
+                  <input
+                    id="confirm-password"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Retapez votre mot de passe"
+                    required
+                  />
+                </>
+              )}
 
-    <p className="register-prompt">
-      {showRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}
-    </p>
+              {authMessage && (
+                <p role="status">{authMessage}</p>
+              )}
 
-    <button
-      type="button"
-      onClick={() => setShowRegister((previous) => !previous)}
-    >
-      {showRegister ? 'Revenir à la connexion' : 'Créer un compte'}
-    </button>
-  </div>
-)}
+              <button type="submit">
+                {showRegister ? 'Créer mon compte' : 'Se connecter'}
+              </button>
+            </form>
+
+            <p className="register-prompt">
+              {showRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowRegister((previous) => !previous)}
+            >
+              {showRegister ? 'Revenir à la connexion' : 'Créer un compte'}
+            </button>
+          </div>
+        )}
       </header>
 
       <main>
-        <div className="jobs-layout">
-          <aside className="filters-panel" aria-labelledby="filters-title">
+        <button
+          type="button"
+          className="filters-toggle"
+          onClick={() => setShowFilters((previous) => !previous)}
+          aria-expanded={showFilters}
+          aria-controls="filters-panel"
+        >
+          {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+          {activeFiltersCount > 0 && ` (${activeFiltersCount})`}
+        </button>
+
+        {activeFiltersCount > 0 && (
+          <button
+            type="button"
+            className="clear-filters"
+            onClick={resetFilters}
+          >
+            Effacer les filtres
+          </button>
+        )}
+
+        <div className={`jobs-layout ${showFilters ? '' : 'filters-hidden'}`}>
+          <aside
+            id="filters-panel"
+            className="filters-panel"
+            aria-labelledby="filters-title"
+            hidden={!showFilters}
+          >
             <h2 id="filters-title">Filtrer les offres</h2>
 
             <div className="filters">
@@ -361,21 +524,36 @@ function App() {
                   Publiée le{' '}
                   {new Date(`${job.publishedAt}T00:00:00`).toLocaleDateString('fr-FR')}
                 </p>
-                <button type="button" onClick={() => setSelectedJob(job)}>
+
+                <button
+                  type="button"
+                  onClick={() => openJob(job)}
+                  aria-expanded={selectedJob?.id === job.id}
+                  aria-controls={`job-details-${job.id}`}
+                >
                   Voir l’offre
                 </button>
+
+                <section
+                  id={`job-details-${job.id}`}
+                  className="job-details"
+                  aria-labelledby={`details-title-${job.id}`}
+                  hidden={selectedJob?.id !== job.id}
+                >
+                  <h4 id={`details-title-${job.id}`}>
+                    Description du poste
+                  </h4>
+                  <p>{job.description}</p>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedJob(null)}
+                  >
+                    Fermer
+                  </button>
+                </section>
               </article>
             ))}
-
-            {visibleSelectedJob && (
-              <section className="job-details" aria-labelledby="details-title">
-                <h2 id="details-title">{visibleSelectedJob.title}</h2>
-                <p>{visibleSelectedJob.description}</p>
-                <button type="button" onClick={() => setSelectedJob(null)}>
-                  Fermer
-                </button>
-              </section>
-            )}
           </section>
         </div>
       </main>

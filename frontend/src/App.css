@@ -300,3 +300,25 @@ button:focus-visible {
   outline: 3px solid #619eff;
   outline-offset: 2px;
 }
+
+.filters-toggle {
+  margin-bottom: 20px;
+}
+
+.filters-panel[hidden] {
+  display: none;
+}
+
+.jobs-layout.filters-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.clear-filters {
+  margin-left: 12px;
+  margin-bottom: 20px;
+}
+@media (max-width: 600px) {
+  .clear-filters {
+    margin-left: 0;
+  }
+}
