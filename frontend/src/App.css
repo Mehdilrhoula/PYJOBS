@@ -322,3 +322,85 @@ button:focus-visible {
     margin-left: 0;
   }
 }
+.application-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 20px;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.application-form h4 {
+  margin: 0 0 8px;
+  color: #183153;
+}
+
+.application-form label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #183153;
+}
+
+.application-form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  background-color: #f8fafc;
+  color: #222222;
+}
+
+.application-form input:focus-visible {
+  outline: 3px solid #619eff;
+  outline-offset: 2px;
+}
+
+.application-form button {
+  margin-top: 12px;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .application-form {
+    padding: 16px;
+  }
+}
+.application-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  color: #222222;
+  background-color: #f8fafc;
+  resize: vertical;
+}
+
+.application-form textarea:focus-visible {
+  outline: 3px solid #619eff;
+  outline-offset: 2px;
+}
+.message-limit {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: right;
+}
+.application-status {
+  padding: 12px;
+  margin: 10px 0 0;
+  background-color: #edf4ff;
+  color: #183153;
+  border: 1px solid #619eff;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+}

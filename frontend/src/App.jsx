@@ -17,6 +17,10 @@ function App() {
   const [authMessage, setAuthMessage] = useState('')
   const [registerRole, setRegisterRole] = useState('candidate')
   const previousScrollPosition = useRef(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showApplication, setShowApplication] = useState(false)
+  const [applicationMessage, setApplicationMessage] = useState('')
+  const [applicationStatus, setApplicationStatus] = useState('')
 
   const activeFiltersCount = [
     search.trim(),
@@ -70,7 +74,7 @@ function App() {
       publishedAt: '2026-10-08',
       salaryMin: 1100,
       salaryMax: 1400,
-      workMode: 'À distance',
+      workMode: 'Distanciel',
       workingTime: 'Temps partiel',
       experienceLevel: 'Débutant',
       description: 'Participer aux campagnes marketing et à la gestion des réseaux sociaux.',
@@ -159,6 +163,9 @@ function App() {
       previousScrollPosition.current = window.scrollY
     }
 
+    setShowApplication(false)
+    setApplicationMessage('')
+    setApplicationStatus('')
     setSelectedJob(job)
   }
   function handleAuthSubmit(event) {
@@ -212,7 +219,11 @@ function App() {
           <button
             type="button"
             className="login-button"
-            onClick={() => setShowLogin((previous) => !previous)}
+            onClick={() => {
+              setShowLogin((previous) => !previous)
+              setAuthMessage('')
+              setShowPassword(false)
+            }}
             aria-expanded={showLogin}
             aria-controls="login-panel"
           >
@@ -299,7 +310,7 @@ function App() {
                 key={showRegister ? 'register-password' : 'login-password'}
                 id="login-password"
                 name="password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 autoComplete={showRegister ? 'new-password' : 'current-password'}
                 placeholder="Votre mot de passe"
                 required
@@ -311,14 +322,20 @@ function App() {
                   <input
                     id="confirm-password"
                     name="confirmPassword"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="new-password"
                     placeholder="Retapez votre mot de passe"
                     required
                   />
                 </>
               )}
-
+              <button
+                type="button"
+                onClick={() => setShowPassword((previous) => !previous)}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              </button>
               {authMessage && (
                 <p role="status">{authMessage}</p>
               )}
@@ -334,7 +351,11 @@ function App() {
 
             <button
               type="button"
-              onClick={() => setShowRegister((previous) => !previous)}
+              onClick={() => {
+                setShowRegister((previous) => !previous)
+                setAuthMessage('')
+                setShowPassword(false)
+              }}
             >
               {showRegister ? 'Revenir à la connexion' : 'Créer un compte'}
             </button>
@@ -458,7 +479,7 @@ function App() {
                   <option value="">Tous les modes</option>
                   <option value="Sur place">Sur place</option>
                   <option value="Hybride">Hybride</option>
-                  <option value="À distance">À distance</option>
+                  <option value="Distanciel">Distanciel</option>
                 </select>
               </div>
 
@@ -484,8 +505,10 @@ function App() {
                 >
                   <option value="">Tous les niveaux</option>
                   <option value="Débutant">Débutant</option>
-                  <option value="Confirmé">Confirmé</option>
+                  <option value="Junior">Junior</option>
+                  <option value="Intermédiaire">Intermédiaire</option>
                   <option value="Senior">Senior</option>
+                  <option value="Expert">Expert</option>
                 </select>
               </div>
             </div>
@@ -544,7 +567,80 @@ function App() {
                     Description du poste
                   </h4>
                   <p>{job.description}</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowApplication(true)}
+                  >
+                    Postuler
+                  </button>
+                  {showApplication && (
+                    <form
+                      className="application-form"
+                      onSubmit={(event) => {
+                        event.preventDefault()
+                        setApplicationStatus(
+                          "Votre formulaire est complet. L'envoi sera disponible prochainement."
+                        )
+                      }}
+                    >
+                      <h4>Postuler à cette offre</h4>
 
+                      <label htmlFor={`application-name-${job.id}`}>
+                        Nom complet
+                      </label>
+                      <input
+                        id={`application-name-${job.id}`}
+                        type="text"
+                        placeholder="Votre nom complet"
+                        required
+                      />
+
+                      <label htmlFor={`application-email-${job.id}`}>
+                        Adresse email
+                      </label>
+                      <input
+                        id={`application-email-${job.id}`}
+                        type="email"
+                        placeholder="Votre adresse email"
+                        required
+                      />
+
+                      <label htmlFor={`application-cv-${job.id}`}>
+                        Votre CV
+                      </label>
+                      <input
+                        id={`application-cv-${job.id}`}
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        required
+                      />
+                      <label htmlFor={`application-message-${job.id}`}>
+                        Message au recruteur
+                      </label>
+
+                      <textarea
+                        id={`application-message-${job.id}`}
+                        name="message"
+                        placeholder="Présentez-vous en quelques lignes, expliquez votre motivation..."
+                        rows="6"
+                        maxLength={3000}
+                        value={applicationMessage}
+                        onChange={(event) => setApplicationMessage(event.target.value)}
+                        required
+                      />
+                      <p className="message-limit">
+                        {3000 - applicationMessage.length} caractères restants sur 3 000
+                      </p>
+                      <button type="submit">
+                        Envoyer ma candidature
+                      </button>
+                      {applicationStatus && (
+                        <p className="application-status" role="status">
+                          {applicationStatus}
+                        </p>
+                      )}
+                    </form>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedJob(null)}
