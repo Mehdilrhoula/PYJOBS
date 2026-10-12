@@ -11,6 +11,8 @@ function App() {
   const [workingTime, setWorkingTime] = useState('')
   const [experienceLevel, setExperienceLevel] = useState('')
   const [selectedJob, setSelectedJob] = useState(null)
+  const [showLogin, setShowLogin] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
 
   const jobs = [
     {
@@ -122,7 +124,85 @@ function App() {
   return (
     <>
       <header>
-        <h1>PYJOBS</h1>
+        <div className="header-content">
+          <h1>PYJOBS</h1>
+          <button
+            type="button"
+            className="login-button"
+            onClick={() => setShowLogin((previous) => !previous)}
+            aria-expanded={showLogin}
+            aria-controls="login-panel"
+          >
+            Connexion
+          </button>
+        </div>
+
+       {showLogin && (
+  <div id="login-panel" className="login-panel">
+    <h2>{showRegister ? 'Créer un compte' : 'Connexion'}</h2>
+
+    <form
+      className="login-form"
+      onSubmit={(event) => event.preventDefault()}
+    >
+      {showRegister && (
+        <>
+          <label htmlFor="register-role">Type de compte</label>
+          <select id="register-role" name="role" required>
+            <option value="candidate">Candidat</option>
+            <option value="company">Société</option>
+          </select>
+
+          <label htmlFor="register-name">
+            Nom complet ou nom de la société
+          </label>
+          <input
+            id="register-name"
+            name="name"
+            type="text"
+            required
+          />
+        </>
+      )}
+
+      <label htmlFor="login-email">Email</label>
+      <input
+        id="login-email"
+        name="email"
+        type="email"
+        autoComplete="username"
+        placeholder="Votre adresse email"
+        required
+      />
+
+      <label htmlFor="login-password">Mot de passe</label>
+      <input
+        key={showRegister ? 'register-password' : 'login-password'}
+        id="login-password"
+        name="password"
+        type="password"
+        autoComplete={showRegister ? 'new-password' : 'current-password'}
+        placeholder="Votre mot de passe"
+        required
+      />
+
+      <button type="submit">
+        {showRegister ? 'Créer mon compte' : 'Se connecter'}
+      </button>
+    </form>
+
+    <p className="register-prompt">
+      {showRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}
+    </p>
+
+    <button
+      type="button"
+      onClick={() => setShowRegister((previous) => !previous)}
+    >
+      {showRegister ? 'Revenir à la connexion' : 'Créer un compte'}
+    </button>
+  </div>
+)}
       </header>
 
       <main>
