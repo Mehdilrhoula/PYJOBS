@@ -404,3 +404,92 @@ button:focus-visible {
   font-size: 14px;
   text-align: center;
 }
+.application-form .cancel-application {
+  background-color: #e2e8f0;
+  color: #183153;
+  border: 1px solid #cbd5e1;
+}
+
+.application-form .cancel-application:hover {
+  background-color: #cbd5e1;
+}
+
+.job-publication {
+  background-color: white;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.job-publication h2 {
+  color: #183153;
+  margin-bottom: 10px;
+}
+
+.job-publication-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.job-publication-form label {
+  font-weight: 600;
+  color: #183153;
+  margin-top: 8px;
+}
+
+.job-publication-form input,
+.job-publication-form select,
+.job-publication-form textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 15px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.job-publication-form input:focus,
+.job-publication-form select:focus,
+.job-publication-form textarea:focus {
+  outline: none;
+  border-color: #183153;
+}
+
+.job-publication-form textarea {
+  resize: vertical;
+}
+
+.publish-job-button {
+  background-color: #183153;
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 20px;
+}
+
+.publish-job-button:hover {
+  background-color: #274a78;
+}
+
+@media (max-width: 768px) {
+  .job-publication {
+    padding: 20px;
+  }
+}
+
+.job-publication-message {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  background-color: #e8f1ff;
+  color: #183153;
+  font-weight: 500;
+}
