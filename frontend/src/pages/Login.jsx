@@ -1,18 +1,15 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 function Login() {
+  const [message, setMessage] = useState('')
+
   function handleSubmit(event) {
     event.preventDefault()
 
-    const formData = new FormData(event.currentTarget)
-
-    const email = formData.get('email')
-    const password = formData.get('password')
-
-    console.log('Email :', email)
-    console.log('Mot de passe renseigné :', Boolean(password))
-
-    alert('La connexion sera disponible après intégration du backend.')
+    setMessage(
+      'La connexion sera disponible après intégration du backend Django.'
+    )
   }
 
   return (
@@ -29,6 +26,7 @@ function Login() {
             id="email"
             name="email"
             placeholder="Votre adresse e-mail"
+            autoComplete="email"
             required
           />
 
@@ -38,10 +36,17 @@ function Login() {
             id="password"
             name="password"
             placeholder="Votre mot de passe"
+            autoComplete="current-password"
             required
           />
 
           <button type="submit">Se connecter</button>
+
+          {message && (
+            <p className="login-message" role="status">
+              {message}
+            </p>
+          )}
         </form>
 
         <p>
