@@ -1,7 +1,18 @@
+
 import { useEffect, useRef, useState } from 'react'
+
+import Header from './components/Header'
+import AuthForm from './components/AuthForm'
+import JobPublicationForm from './components/JobPublicationForm'
+import JobFilters from './components/JobFilters'
+import JobCard from './components/JobCard'
+import { Routes, Route } from 'react-router-dom'
+import Login from './pages/Login'
 import './App.css'
+import Register from './pages/Register'
 
 function App() {
+  // États des filtres
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [contractType, setContractType] = useState('')
@@ -10,32 +21,32 @@ function App() {
   const [workMode, setWorkMode] = useState('')
   const [workingTime, setWorkingTime] = useState('')
   const [experienceLevel, setExperienceLevel] = useState('')
-  const [selectedJob, setSelectedJob] = useState(null)
-  const [showLogin, setShowLogin] = useState(false)
-  const [showRegister, setShowRegister] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [authMessage, setAuthMessage] = useState('')
-  const [registerRole, setRegisterRole] = useState('candidate')
-  const [showJobForm, setShowJobForm] = useState(false)
-  const [jobPublicationMessage, setJobPublicationMessage] = useState('')
-  const [userRole, setUserRole] = useState('null')
-  const previousScrollPosition = useRef(null)
-  const [showPassword, setShowPassword] = useState(false)
+
+  // États des offres et candidatures
+  const [selectedJob, setSelectedJob] = useState(null)
   const [showApplication, setShowApplication] = useState(false)
   const [applicationMessage, setApplicationMessage] = useState('')
   const [applicationStatus, setApplicationStatus] = useState('')
 
-  const activeFiltersCount = [
-    search.trim(),
-    category,
-    contractType,
-    publicationPeriod,
-    minimumSalary,
-    workMode,
-    workingTime,
-    experienceLevel,
-  ].filter((value) => value !== '').length
+  // États de connexion et d'inscription
+  const [showLogin, setShowLogin] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
+  const [authMessage, setAuthMessage] = useState('')
+  const [registerRole, setRegisterRole] = useState('candidate')
+  const [showPassword, setShowPassword] = useState(false)
 
+  // Aucun utilisateur connecté au démarrage
+  const [userRole] = useState(null)
+
+  // États de publication
+  const [showJobForm, setShowJobForm] = useState(false)
+  const [jobPublicationMessage, setJobPublicationMessage] = useState('')
+
+  // Position de défilement avant l'ouverture d'une offre
+  const previousScrollPosition = useRef(null)
+
+  // Offres fictives en attendant le backend
   const jobs = [
     {
       id: 1,
@@ -50,7 +61,8 @@ function App() {
       workMode: 'Hybride',
       workingTime: 'Temps plein',
       experienceLevel: 'Débutant',
-      description: 'Participer au développement de sites et applications web.',
+      description:
+        'Participer au développement de sites et applications web.',
     },
     {
       id: 2,
@@ -65,7 +77,8 @@ function App() {
       workMode: 'Sur place',
       workingTime: 'Temps plein',
       experienceLevel: 'Confirmé',
-      description: 'Accompagner les utilisateurs et assurer la maintenance informatique.',
+      description:
+        'Accompagner les utilisateurs et assurer la maintenance informatique.',
     },
     {
       id: 3,
@@ -80,7 +93,8 @@ function App() {
       workMode: 'Distanciel',
       workingTime: 'Temps partiel',
       experienceLevel: 'Débutant',
-      description: 'Participer aux campagnes marketing et à la gestion des réseaux sociaux.',
+      description:
+        'Participer aux campagnes marketing et à la gestion des réseaux sociaux.',
     },
     {
       id: 4,
@@ -95,10 +109,24 @@ function App() {
       workMode: 'Hybride',
       workingTime: 'Temps plein',
       experienceLevel: 'Confirmé',
-      description: 'Développer un portefeuille de clients et présenter les services de l’entreprise.',
+      description:
+        "Développer un portefeuille de clients et présenter les services de l'entreprise.",
     },
   ]
 
+  // Compter les filtres actifs
+  const activeFiltersCount = [
+    search.trim(),
+    category,
+    contractType,
+    publicationPeriod,
+    minimumSalary,
+    workMode,
+    workingTime,
+    experienceLevel,
+  ].filter((value) => value !== '').length
+
+  // Normaliser les textes pour la recherche
   function normalizeText(text) {
     return text
       .normalize('NFD')
@@ -107,12 +135,16 @@ function App() {
       .trim()
   }
 
+  // Filtrer les offres
   const filteredJobs = jobs
     .filter((job) =>
       normalizeText(job.title).includes(normalizeText(search))
     )
     .filter((job) => category === '' || job.category === category)
-    .filter((job) => contractType === '' || job.contractType === contractType)
+    .filter(
+      (job) =>
+        contractType === '' || job.contractType === contractType
+    )
     .filter((job) => {
       if (publicationPeriod === '') return true
 
@@ -120,21 +152,37 @@ function App() {
       today.setHours(0, 0, 0, 0)
 
       const earliestDate = new Date(today)
-      earliestDate.setDate(today.getDate() - Number(publicationPeriod) + 1)
+      earliestDate.setDate(
+        today.getDate() - Number(publicationPeriod) + 1
+      )
 
-      const publicationDate = new Date(`${job.publishedAt}T00:00:00`)
+      const publicationDate = new Date(
+        `${job.publishedAt}T00:00:00`
+      )
 
-      return publicationDate >= earliestDate && publicationDate <= today
+      return (
+        publicationDate >= earliestDate &&
+        publicationDate <= today
+      )
     })
-    .filter((job) =>
-      minimumSalary === '' || job.salaryMax >= Number(minimumSalary)
+    .filter(
+      (job) =>
+        minimumSalary === '' ||
+        job.salaryMax >= Number(minimumSalary)
     )
-    .filter((job) => workMode === '' || job.workMode === workMode)
-    .filter((job) => workingTime === '' || job.workingTime === workingTime)
-    .filter((job) =>
-      experienceLevel === '' || job.experienceLevel === experienceLevel
+    .filter(
+      (job) => workMode === '' || job.workMode === workMode
+    )
+    .filter(
+      (job) => workingTime === '' || job.workingTime === workingTime
+    )
+    .filter(
+      (job) =>
+        experienceLevel === '' ||
+        job.experienceLevel === experienceLevel
     )
 
+  // Gérer le défilement lors de l'ouverture d'une offre
   useEffect(() => {
     const reducedMotion = window.matchMedia(
       '(prefers-reduced-motion: reduce)'
@@ -161,6 +209,7 @@ function App() {
     }
   }, [selectedJob])
 
+  // Ouvrir une offre
   function openJob(job) {
     if (previousScrollPosition.current === null) {
       previousScrollPosition.current = window.scrollY
@@ -171,12 +220,15 @@ function App() {
     setApplicationStatus('')
     setSelectedJob(job)
   }
+
+  // Valider le formulaire de connexion ou d'inscription
   function handleAuthSubmit(event) {
     event.preventDefault()
 
     const formData = new FormData(event.currentTarget)
     const password = formData.get('password')
     const confirmation = formData.get('confirmPassword')
+
     if (showRegister) {
       const name = String(formData.get('name') ?? '').trim()
 
@@ -191,7 +243,9 @@ function App() {
     }
 
     if (showRegister && password !== confirmation) {
-      setAuthMessage('Les deux mots de passe ne correspondent pas.')
+      setAuthMessage(
+        'Les deux mots de passe ne correspondent pas.'
+      )
       return
     }
 
@@ -201,6 +255,8 @@ function App() {
         : 'La connexion sera disponible une fois le serveur connecté.'
     )
   }
+
+  // Réinitialiser tous les filtres
   function resetFilters() {
     setSearch('')
     setCategory('')
@@ -213,634 +269,102 @@ function App() {
     setSelectedJob(null)
   }
 
+
+
   return (
     <>
-      <header>
-        <div className="header-content">
-          <h1>PYJOBS</h1>
-          {userRole === 'company' && (
-            <button
-              type="button"
-              onClick={() => setShowJobForm(true)}
-            >
-              Publier une offre
-            </button>
-          )}
+      <Header
+        userRole={userRole}
+        setShowJobForm={setShowJobForm}
+      />
 
-          <button
-            type="button"
-            className="login-button"
-            onClick={() => {
-              setShowLogin((previous) => !previous)
-              setAuthMessage('')
-              setShowPassword(false)
-            }}
-            aria-expanded={showLogin}
-            aria-controls="login-panel"
-          >
-            Connexion
-          </button>
-        </div>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <main>
+                {userRole === 'company' && showJobForm && (
+                  <JobPublicationForm
+                    onClose={() => setShowJobForm(false)}
+                    jobPublicationMessage={jobPublicationMessage}
+                    setJobPublicationMessage={setJobPublicationMessage}
+                  />
+                )}
 
-        {showLogin && (
-          <div id="login-panel" className="login-panel">
-            <h2>{showRegister ? 'Créer un compte' : 'Connexion'}</h2>
+                <div
+                  className={`jobs-layout ${showFilters ? '' : 'filters-hidden'
+                    }`}
+                >
+                  <JobFilters
+                    search={search}
+                    setSearch={setSearch}
+                    category={category}
+                    setCategory={setCategory}
+                    contractType={contractType}
+                    setContractType={setContractType}
+                    publicationPeriod={publicationPeriod}
+                    setPublicationPeriod={setPublicationPeriod}
+                    minimumSalary={minimumSalary}
+                    setMinimumSalary={setMinimumSalary}
+                    workMode={workMode}
+                    setWorkMode={setWorkMode}
+                    workingTime={workingTime}
+                    setWorkingTime={setWorkingTime}
+                    experienceLevel={experienceLevel}
+                    setExperienceLevel={setExperienceLevel}
+                    showFilters={showFilters}
+                    setShowFilters={setShowFilters}
+                    activeFiltersCount={activeFiltersCount}
+                    resetFilters={resetFilters}
+                  />
 
-            <form
-              className="login-form"
-              onSubmit={handleAuthSubmit}
-            >
-              {showRegister && (
-                <>
-                  <label htmlFor="register-role">Type de compte</label>
-                  <select
-                    id="register-role"
-                    name="role"
-                    value={registerRole}
-                    onChange={(event) => {
-                      setRegisterRole(event.target.value)
-                      setAuthMessage('')
-                    }}
-                    required
+                  <section
+                    className="jobs-results"
+                    aria-labelledby="results-title"
                   >
-                    <option value="candidate">Candidat</option>
-                    <option value="company">Société</option>
-                  </select>
+                    <h2 id="results-title">
+                      Nos offres d'emploi
+                    </h2>
 
-                  <label htmlFor="register-name">
-                    {registerRole === 'company' ? 'Raison sociale' : 'Nom complet'}
-                  </label>
-                  <input
-                    key={registerRole}
-                    id="register-name"
-                    name="name"
-                    type="text"
-                    placeholder={
-                      registerRole === 'company'
-                        ? 'Exemple : Entreprise ABC'
-                        : 'Exemple : Mehdi Lrhoula'
-                    }
-                    required
-                  />
-                  <label htmlFor="register-phone">Téléphone (facultatif)</label>
-                  <input
-                    id="register-phone"
-                    name="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    placeholder="Exemple : 06 12 34 56 78"
-                  />
-                  {registerRole === 'company' && (
-                    <>
-                      <label htmlFor="register-website">
-                        Site internet (facultatif)
-                      </label>
-                      <input
-                        id="register-website"
-                        name="website"
-                        type="url"
-                        placeholder="https://www.exemple.fr"
-                      />
-                    </>
-                  )}
-                </>
-              )}
+                    <p className="results-count" role="status">
+                      {filteredJobs.length} offre(s) trouvée(s)
+                    </p>
 
-              <label htmlFor="login-email">Email</label>
-              <input
-                id="login-email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                placeholder="Votre adresse email"
-                required
-              />
-
-              <label htmlFor="login-password">Mot de passe</label>
-              <input
-                key={showRegister ? 'register-password' : 'login-password'}
-                id="login-password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={showRegister ? 'new-password' : 'current-password'}
-                placeholder="Votre mot de passe"
-                required
-              />
-
-              {showRegister && (
-                <>
-                  <label htmlFor="confirm-password">Confirmer le mot de passe</label>
-                  <input
-                    id="confirm-password"
-                    name="confirmPassword"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    placeholder="Retapez votre mot de passe"
-                    required
-                  />
-                </>
-              )}
-              <button
-                type="button"
-                onClick={() => setShowPassword((previous) => !previous)}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-              </button>
-              {authMessage && (
-                <p role="status">{authMessage}</p>
-              )}
-
-              <button type="submit">
-                {showRegister ? 'Créer mon compte' : 'Se connecter'}
-              </button>
-            </form>
-
-            <p className="register-prompt">
-              {showRegister ? 'Déjà un compte ?' : 'Pas encore de compte ?'}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowRegister((previous) => !previous)
-                setAuthMessage('')
-                setShowPassword(false)
-              }}
-            >
-              {showRegister ? 'Revenir à la connexion' : 'Créer un compte'}
-            </button>
-          </div>
-        )}
-      </header>
-
-      <main>
-        {userRole === 'company' && showJobForm && (
-          <section className="job-publication">
-            <h2>Publier une offre d'emploi</h2>
-
-            <p>
-              Complétez les informations ci-dessous pour créer
-              votre annonce.
-            </p>
-            <form
-              className="job-publication-form"
-              onSubmit={(event) => {
-                event.preventDefault()
-
-                const formData = new FormData(event.currentTarget)
-                const jobData = Object.fromEntries(formData.entries())
-
-                if (
-                  jobData.salaryMin !== '' &&
-                  jobData.salaryMax !== '' &&
-                  Number(jobData.salaryMin) > Number(jobData.salaryMax)
-                ) {
-                  setJobPublicationMessage(
-                    'Erreur : le salaire minimum ne peut pas dépasser le salaire maximum.'
-                  )
-                  return
-                }
-
-                console.log('Nouvelle offre :', jobData)
-
-                setJobPublicationMessage(
-                  "Votre offre est prête ! Elle pourra être publiée après la connexion au backend."
-                )
-              }}
-            >
-              <label htmlFor="job-title">Intitulé du poste</label>
-              <input
-                type="text"
-                id="job-title"
-                name="title"
-                placeholder="Ex : Développeur React"
-                required
-              />
-
-              <label htmlFor="job-company">Nom de l'entreprise</label>
-              <input
-                type="text"
-                id="job-company"
-                name="company"
-                placeholder="Ex : PYJOBS"
-                required
-              />
-
-              <label htmlFor="job-location">Lieu du poste</label>
-              <input
-                type="text"
-                id="job-location"
-                name="location"
-                placeholder="Ex : Marseille"
-                required
-              />
-
-              <label htmlFor="job-category">Catégorie</label>
-              <select id="job-category" name="category" required defaultValue="">
-                <option value="" disabled>Choisir une catégorie</option>
-                <option value="Informatique">Informatique</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Ressources humaines">Ressources humaines</option>
-                <option value="Finance">Finance</option>
-                <option value="Autre">Autre</option>
-              </select>
-
-              <label htmlFor="job-contract">Type de contrat</label>
-              <select id="job-contract" name="contractType" required defaultValue="">
-                <option value="" disabled>Choisir un contrat</option>
-                <option value="CDI">CDI</option>
-                <option value="CDD">CDD</option>
-                <option value="Alternance">Alternance</option>
-                <option value="Stage">Stage</option>
-                <option value="Freelance">Freelance</option>
-              </select>
-
-              <label htmlFor="job-salary-min">Salaire annuel minimum (€ brut)</label>
-              <input
-                type="number"
-                id="job-salary-min"
-                name="salaryMin"
-                placeholder="Ex : 30000"
-                min="0"
-                step="1"
-              />
-
-              <label htmlFor="job-salary-max">Salaire annuel maximum (€ brut)</label>
-              <input
-                type="number"
-                id="job-salary-max"
-                name="salaryMax"
-                placeholder="Ex : 40000"
-                min="0"
-                step="1"
-              />
-
-              <label htmlFor="job-work-mode">Mode de travail</label>
-              <select id="job-work-mode" name="workMode" required defaultValue="">
-                <option value="" disabled>Choisir un mode de travail</option>
-                <option value="Sur site">Sur site</option>
-                <option value="Hybride">Hybride</option>
-                <option value="Télétravail">Télétravail</option>
-              </select>
-
-              <label htmlFor="job-working-time">Temps de travail</label>
-              <select id="job-working-time" name="workingTime" required defaultValue="">
-                <option value="" disabled>Choisir un temps de travail</option>
-                <option value="Temps plein">Temps plein</option>
-                <option value="Temps partiel">Temps partiel</option>
-              </select>
-
-              <label htmlFor="job-experience">Expérience demandée</label>
-              <select id="job-experience" name="experienceLevel" required defaultValue="">
-                <option value="" disabled>Choisir un niveau</option>
-                <option value="Débutant">Débutant</option>
-                <option value="1 à 3 ans">1 à 3 ans</option>
-                <option value="3 à 5 ans">3 à 5 ans</option>
-                <option value="5 ans et plus">5 ans et plus</option>
-              </select>
-
-              <label htmlFor="job-description">Description du poste</label>
-              <textarea
-                id="job-description"
-                name="description"
-                rows="7"
-                placeholder="Présentez les missions, les compétences recherchées et les avantages du poste..."
-                maxLength={5000}
-                required
-              />
-
-              <button type="submit" className="publish-job-button">
-                Publier l'offre
-              </button>
-              {jobPublicationMessage && (
-                <p className="job-publication-message" role="status">
-                  {jobPublicationMessage}
-                </p>
-              )}
-            </form>
-            <button
-              type="button"
-              onClick={() => setShowJobForm(false)}
-            >
-              Fermer le formulaire
-            </button>
-          </section>
-        )}
-        <button
-          type="button"
-          className="filters-toggle"
-          onClick={() => setShowFilters((previous) => !previous)}
-          aria-expanded={showFilters}
-          aria-controls="filters-panel"
-        >
-          {showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
-          {activeFiltersCount > 0 && ` (${activeFiltersCount})`}
-        </button>
-
-        {activeFiltersCount > 0 && (
-          <button
-            type="button"
-            className="clear-filters"
-            onClick={resetFilters}
-          >
-            Effacer les filtres
-          </button>
-        )}
-
-        <div className={`jobs-layout ${showFilters ? '' : 'filters-hidden'}`}>
-          <aside
-            id="filters-panel"
-            className="filters-panel"
-            aria-labelledby="filters-title"
-            hidden={!showFilters}
-          >
-            <h2 id="filters-title">Filtrer les offres</h2>
-
-            <div className="filters">
-              <div className="filter-field">
-                <label htmlFor="search">Rechercher par titre</label>
-                <input
-                  id="search"
-                  type="search"
-                  placeholder="Exemple : développeur"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                />
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="category">Univers</label>
-                <select
-                  id="category"
-                  value={category}
-                  onChange={(event) => setCategory(event.target.value)}
-                >
-                  <option value="">Tous les univers</option>
-                  <option value="IT">IT</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Commerce">Commerce</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="contractType">Type de contrat</label>
-                <select
-                  id="contractType"
-                  value={contractType}
-                  onChange={(event) => setContractType(event.target.value)}
-                >
-                  <option value="">Tous les contrats</option>
-                  <option value="CDI">CDI</option>
-                  <option value="CDD">CDD</option>
-                  <option value="Alternance">Alternance</option>
-                  <option value="Stage">Stage</option>
-                  <option value="Intérim">Intérim</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="publicationPeriod">Date de publication</label>
-                <select
-                  id="publicationPeriod"
-                  value={publicationPeriod}
-                  onChange={(event) => setPublicationPeriod(event.target.value)}
-                >
-                  <option value="">Toutes les dates</option>
-                  <option value="1">Aujourd’hui</option>
-                  <option value="7">Les 7 derniers jours</option>
-                  <option value="30">Les 30 derniers jours</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="minimumSalary">
-                  Salaire souhaité (€ brut/mois)
-                </label>
-                <input
-                  id="minimumSalary"
-                  type="number"
-                  min="0"
-                  step="100"
-                  placeholder="Exemple : 2000"
-                  value={minimumSalary}
-                  onChange={(event) => setMinimumSalary(event.target.value)}
-                  aria-describedby="salary-help"
-                />
-                <p id="salary-help" className="filter-help">
-                  Comparé au maximum de la fourchette proposée.
-                </p>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="workMode">Télétravail</label>
-                <select
-                  id="workMode"
-                  value={workMode}
-                  onChange={(event) => setWorkMode(event.target.value)}
-                >
-                  <option value="">Tous les modes</option>
-                  <option value="Sur place">Sur place</option>
-                  <option value="Hybride">Hybride</option>
-                  <option value="Distanciel">Distanciel</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="workingTime">Temps de travail</label>
-                <select
-                  id="workingTime"
-                  value={workingTime}
-                  onChange={(event) => setWorkingTime(event.target.value)}
-                >
-                  <option value="">Tous les temps de travail</option>
-                  <option value="Temps plein">Temps plein</option>
-                  <option value="Temps partiel">Temps partiel</option>
-                </select>
-              </div>
-
-              <div className="filter-field">
-                <label htmlFor="experienceLevel">Niveau d’expérience</label>
-                <select
-                  id="experienceLevel"
-                  value={experienceLevel}
-                  onChange={(event) => setExperienceLevel(event.target.value)}
-                >
-                  <option value="">Tous les niveaux</option>
-                  <option value="Débutant">Débutant</option>
-                  <option value="Junior">Junior</option>
-                  <option value="Intermédiaire">Intermédiaire</option>
-                  <option value="Senior">Senior</option>
-                  <option value="Expert">Expert</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="button" onClick={resetFilters}>
-              Réinitialiser les filtres
-            </button>
-          </aside>
-
-          <section className="jobs-results" aria-labelledby="results-title">
-            <h2 id="results-title">Nos offres d’emploi</h2>
-
-            <p className="results-count" role="status">
-              {filteredJobs.length} offre(s) trouvée(s)
-            </p>
-
-            {filteredJobs.length === 0 && (
-              <p className="empty-results">
-                Aucune offre ne correspond à vos critères.
-              </p>
-            )}
-
-            {filteredJobs.map((job) => (
-              <article className="job-card" key={job.id}>
-                <h3>{job.title}</h3>
-                <p>Entreprise : {job.company}</p>
-                <p>Lieu : {job.location}</p>
-                <p>Univers : {job.category}</p>
-                <p>Contrat : {job.contractType}</p>
-                <p>
-                  Salaire : {job.salaryMin}–{job.salaryMax} € brut/mois
-                </p>
-                <p>{job.workMode} · {job.workingTime}</p>
-                <p>Expérience : {job.experienceLevel}</p>
-                <p>
-                  Publiée le{' '}
-                  {new Date(`${job.publishedAt}T00:00:00`).toLocaleDateString('fr-FR')}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => openJob(job)}
-                  aria-expanded={selectedJob?.id === job.id}
-                  aria-controls={`job-details-${job.id}`}
-                >
-                  Voir l’offre
-                </button>
-
-                <section
-                  id={`job-details-${job.id}`}
-                  className="job-details"
-                  aria-labelledby={`details-title-${job.id}`}
-                  hidden={selectedJob?.id !== job.id}
-                >
-                  <h4 id={`details-title-${job.id}`}>
-                    Description du poste
-                  </h4>
-                  <p>{job.description}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowApplication((previous) => !previous)
-                      setApplicationMessage('')
-                      setApplicationStatus('')
-                    }}
-                    aria-expanded={showApplication}
-                    aria-controls={`application-form-${job.id}`}
-                  >
-                    {showApplication ? 'Masquer le formulaire' : 'Postuler'}
-                  </button>
-                  {showApplication && (
-                    <form
-                      key={`${job.id}-${showApplication}`}
-                      id={`application-form-${job.id}`}
-                      className="application-form"
-                      onSubmit={(event) => {
-                        event.preventDefault()
-                        setApplicationStatus(
-                          "Votre formulaire est complet. L'envoi sera disponible prochainement."
-                        )
-                      }}
-                    >
-                      <h4>Postuler à cette offre</h4>
-
-                      <label htmlFor={`application-name-${job.id}`}>
-                        Nom complet
-                      </label>
-                      <input
-                        id={`application-name-${job.id}`}
-                        type="text"
-                        placeholder="Votre nom complet"
-                        required
-                      />
-
-                      <label htmlFor={`application-email-${job.id}`}>
-                        Adresse email
-                      </label>
-                      <input
-                        id={`application-email-${job.id}`}
-                        type="email"
-                        placeholder="Votre adresse email"
-                        required
-                      />
-
-                      <label htmlFor={`application-cv-${job.id}`}>
-                        Votre CV
-                      </label>
-                      <input
-                        id={`application-cv-${job.id}`}
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        required
-                      />
-                      <label htmlFor={`application-message-${job.id}`}>
-                        Message au recruteur
-                      </label>
-
-                      <textarea
-                        id={`application-message-${job.id}`}
-                        name="message"
-                        placeholder="Présentez-vous en quelques lignes, expliquez votre motivation..."
-                        rows="6"
-                        maxLength={4000}
-                        value={applicationMessage}
-                        onChange={(event) => setApplicationMessage(event.target.value)}
-                        required
-                      />
-                      <p className="message-limit">
-                        {4000 - applicationMessage.length} caractères restants sur 4 000
+                    {filteredJobs.length === 0 && (
+                      <p className="empty-results">
+                        Aucune offre ne correspond à vos critères.
                       </p>
-                      <button
-                        type="button"
-                        className="cancel-application"
-                        onClick={() => {
-                          setShowApplication(false)
-                          setApplicationMessage('')
-                          setApplicationStatus('')
-                        }}
-                      >
-                        Annuler ma candidature
-                      </button>
-                      <button type="submit">
-                        Envoyer ma candidature
-                      </button>
-                      {applicationStatus && (
-                        <p className="application-status" role="status">
-                          {applicationStatus}
-                        </p>
-                      )}
-                    </form>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowApplication(false)
-                      setApplicationMessage('')
-                      setApplicationStatus('')
-                      setSelectedJob(null)
-                    }}
-                  >
-                    Fermer
-                  </button>
-                </section>
-              </article>
-            ))}
-          </section>
-        </div>
-      </main>
+                    )}
+
+                    {filteredJobs.map((job) => (
+                      <JobCard
+                        key={job.id}
+                        job={job}
+                        selectedJob={selectedJob}
+                        openJob={openJob}
+                        setSelectedJob={setSelectedJob}
+                        showApplication={showApplication}
+                        setShowApplication={setShowApplication}
+                        applicationMessage={applicationMessage}
+                        setApplicationMessage={setApplicationMessage}
+                        applicationStatus={applicationStatus}
+                        setApplicationStatus={setApplicationStatus}
+                      />
+                    ))}
+                  </section>
+                </div>
+              </main>
+            </>
+          }
+        />
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+          <Route path="/register" element={<Register />} />
+        </Routes>
     </>
   )
 }

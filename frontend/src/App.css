@@ -493,3 +493,146 @@ button:focus-visible {
   color: #183153;
   font-weight: 500;
 }
+.jobs-layout > .filters-toggle {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.jobs-layout > .clear-filters {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-left: 0;
+}
+
+.jobs-layout > .filters-panel {
+  grid-column: 1;
+}
+
+.jobs-layout > .jobs-results {
+  grid-column: 2;
+}
+
+.jobs-layout.filters-hidden > .jobs-results {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 700px) {
+  .jobs-layout > .filters-panel,
+  .jobs-layout > .jobs-results {
+    grid-column: 1 / -1;
+  }
+}
+.header-logo {
+  color: white;
+  text-decoration: none;
+}
+
+.header-logo:hover {
+  color: white;
+  text-decoration: none;
+}
+
+.header-content .login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: white;
+  color: #183153;
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  width: auto;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.header-content .login-button:hover {
+  background-color: #e2e8f0;
+  color: #183153;
+  text-decoration: none;
+}
+.login-page {
+  max-width: none;
+  min-height: calc(100vh - 102px);
+  margin: 0;
+  padding: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  background-color: #f4f7fb;
+}
+
+.login-page-container {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px;
+  background-color: white;
+  border: 1px solid #dce3ec;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+  box-sizing: border-box;
+}
+
+.login-page-container h1 {
+  margin: 0 0 12px;
+  color: #183153;
+  text-align: center;
+}
+
+.login-page-container > p {
+  text-align: center;
+  color: #526175;
+  margin: 16px 0;
+}
+
+.login-page-container .login-form {
+  margin: 24px 0;
+}
+
+.login-page-container .login-form label {
+  color: #183153;
+  font-weight: 600;
+}
+
+.login-page-container .login-form button {
+  width: 100%;
+}
+
+.login-page-container > a {
+  display: block;
+  text-align: center;
+  color: #183153;
+}
+
+@media (max-width: 600px) {
+  .login-page {
+    padding: 16px;
+  }
+
+  .login-page-container {
+    padding: 24px 20px;
+  }
+}
+.login-page-container .password-visibility {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: normal;
+  cursor: pointer;
+}
+
+.login-page-container .password-visibility input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: #183153;
+}
