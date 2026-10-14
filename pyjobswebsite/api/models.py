@@ -14,18 +14,44 @@ class Person(models.Model):
     def __str__(self):
         return self.name
 
+class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ("candidate", "Candidat"),
+        ("employer", "Employeur"),
+    ]
+
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default="candidate",
+    )
+
+    class Meta:
+        db_table = "UserProfile"
+
+    def __str__(self):
+        return f"{self.user.email} - {self.role}"
 
 class Company(models.Model):
     company_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=150)
+    owner = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="companies",
+    )
 
     class Meta:
         db_table = "Company"
 
     def __str__(self):
         return self.name
-
-
+    
 class Ads(models.Model):
     ad_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=150)
@@ -74,9 +100,10 @@ class Application(models.Model):
     )
     ad = models.ForeignKey(
         Ads,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         db_column="ad_id",
     )
+
     message = models.TextField()
     application_date = models.DateField(default=timezone.localdate)
 
