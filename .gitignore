@@ -1,0 +1,6 @@
+# Local Python environments and development databases
+.venv/
+__pycache__/
+*.py[cod]
+/pyjobswebsite/db.local.sqlite3
+/pyjobswebsite/db.local.sqlite3-*

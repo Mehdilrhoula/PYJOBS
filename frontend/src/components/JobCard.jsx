@@ -20,12 +20,12 @@ function JobCard({ job }) {
 
       <p>Expérience : {job.experienceLevel}</p>
 
-      <p>
-        Publiée le{' '}
-        {new Date(
-          `${job.publishedAt}T00:00:00`
-        ).toLocaleDateString('fr-FR')}
-      </p>
+      {job.publishedAt && (
+        <p>
+          Publiée le{' '}
+          {new Date(`${job.publishedAt}T00:00:00`).toLocaleDateString('fr-FR')}
+        </p>
+      )}
 
       <Link
         to={`/jobs/${job.id}`}

@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Header from './components/Header'
 import JobPublicationForm from './components/JobPublicationForm'
@@ -11,10 +11,55 @@ import Admin from './pages/Admin'
 import CompanyDashboard from './pages/CompanyDashboard'
 import CandidateDashboard from './pages/CandidateDashboard'
 import JobDetails from './pages/JobDetails'
-import { jobs } from './data/jobs'
 import './App.css'
 
 function App() {
+  const [jobs, setJobs] = useState([])
+  const [jobsError, setJobsError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadJobs() {
+      try {
+        const response = await fetch('/api/ads/', {
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          throw new Error('Impossible de charger les offres.')
+        }
+
+        const data = await response.json()
+        console.log('Offres reçues de Django :', data)
+        setJobs(
+          data.map((ad) => ({
+            id: ad.ad_id,
+            title: ad.title,
+            company: ad.company.name,
+            location: ad.city,
+            category: ad.category,
+            contractType: ad.contract_type,
+            salaryMin: ad.salary_min,
+            salaryMax: ad.salary_max,
+            workMode: ad.work_mode,
+            workingTime: ad.work_time,
+            experienceLevel: ad.experience_level,
+            description: ad.description,
+            publishedAt: null,
+          }))
+        )
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setJobsError(error.message)
+        }
+      }
+    }
+
+    loadJobs()
+
+    return () => controller.abort()
+  }, [])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [contractType, setContractType] = useState('')
@@ -120,6 +165,7 @@ function App() {
                 />
                 <section className="jobs-results" aria-labelledby="results-title">
                   <h2 id="results-title">Nos offres d'emploi</h2>
+                  {jobsError && <p role="alert">{jobsError}</p>}
                   <p className="results-count" role="status">
                     {filteredJobs.length} offre(s) trouvée(s)
                   </p>

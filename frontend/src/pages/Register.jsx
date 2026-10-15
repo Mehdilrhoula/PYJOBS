@@ -1,42 +1,43 @@
-
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const initialForm = {
-  role: 'candidate',
-  firstName: '',
-  lastName: '',
+  name: '',
   email: '',
   password: '',
   confirmPassword: '',
-  companyName: '',
-  sector: '',
-  city: '',
+  role: 'candidate',
 }
 
 function Register() {
   const [form, setForm] = useState(initialForm)
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
   function handleChange(event) {
     const { name, value } = event.target
 
-    setForm((previousForm) => ({
-      ...previousForm,
+    setForm((previous) => ({
+      ...previous,
       [name]: value,
     }))
 
-    setMessage('')
     setError('')
+    setMessage('')
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
 
-    if (form.password.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.')
+    if (loading) return
+
+    setError('')
+    setMessage('')
+
+    if (!form.name.trim()) {
+      setError('Veuillez renseigner votre nom.')
       return
     }
 
@@ -45,17 +46,65 @@ function Register() {
       return
     }
 
-    if (form.role === 'company' && !form.companyName.trim()) {
-      setError("Veuillez renseigner le nom de l'entreprise.")
-      return
+    setLoading(true)
+
+    try {
+      const csrfCookie = document.cookie
+        .split('; ')
+        .find((cookie) => cookie.startsWith('csrftoken='))
+
+      const headers = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      }
+
+      if (csrfCookie) {
+        headers['X-CSRFToken'] = decodeURIComponent(
+          csrfCookie.slice('csrftoken='.length)
+        )
+      }
+
+      const response = await fetch('/api/register/', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          password: form.password,
+          role: form.role,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        const details = Object.entries(data)
+          .map(([field, messages]) => {
+            const text = Array.isArray(messages)
+              ? messages.join(' ')
+              : String(messages)
+
+            return field === 'detail' || field === 'non_field_errors'
+              ? text
+              : `${field} : ${text}`
+          })
+          .join(' ')
+
+        throw new Error(details || "L'inscription a échoué.")
+      }
+
+      setMessage('Compte créé ! Vous pouvez maintenant vous connecter.')
+      setForm(initialForm)
+    } catch (error) {
+      setError(
+        error instanceof TypeError
+          ? 'Impossible de contacter Django. Vérifiez que le serveur est lancé.'
+          : error.message
+      )
+    } finally {
+      setLoading(false)
     }
-
-    setError('')
-    setMessage(
-      "Formulaire validé ! L'inscription sera activée après la connexion au backend Django."
-    )
-
-    setForm(initialForm)
   }
 
   return (
@@ -71,101 +120,53 @@ function Register() {
             name="role"
             value={form.role}
             onChange={handleChange}
+            disabled={loading}
           >
             <option value="candidate">Candidat</option>
-            <option value="company">Entreprise</option>
+            <option value="employer">Employeur</option>
           </select>
 
-          {form.role === 'candidate' && (
-            <>
-              <label htmlFor="register-first-name">Prénom</label>
-              <input
-                id="register-first-name"
-                type="text"
-                name="firstName"
-                placeholder="Votre prénom"
-                value={form.firstName}
-                onChange={handleChange}
-                required
-              />
-
-              <label htmlFor="register-last-name">Nom</label>
-              <input
-                id="register-last-name"
-                type="text"
-                name="lastName"
-                placeholder="Votre nom"
-                value={form.lastName}
-                onChange={handleChange}
-                required
-              />
-            </>
-          )}
-
-          {form.role === 'company' && (
-            <>
-              <label htmlFor="register-company">Nom de l'entreprise</label>
-              <input
-                id="register-company"
-                type="text"
-                name="companyName"
-                placeholder="Nom de l'entreprise"
-                value={form.companyName}
-                onChange={handleChange}
-                required
-              />
-
-              <label htmlFor="register-sector">Secteur d'activité</label>
-              <input
-                id="register-sector"
-                type="text"
-                name="sector"
-                placeholder="Ex. Informatique"
-                value={form.sector}
-                onChange={handleChange}
-                required
-              />
-
-              <label htmlFor="register-city">Ville</label>
-              <input
-                id="register-city"
-                type="text"
-                name="city"
-                placeholder="Ex. Marseille"
-                value={form.city}
-                onChange={handleChange}
-                required
-              />
-            </>
-          )}
+          <label htmlFor="register-name">Nom complet</label>
+          <input
+            id="register-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            value={form.name}
+            onChange={handleChange}
+            maxLength={100}
+            disabled={loading}
+            required
+          />
 
           <label htmlFor="register-email">Adresse e-mail</label>
           <input
             id="register-email"
-            type="email"
             name="email"
-            placeholder="exemple@email.com"
+            type="email"
+            autoComplete="email"
             value={form.email}
             onChange={handleChange}
+            disabled={loading}
             required
           />
 
           <label htmlFor="register-password">Mot de passe</label>
           <input
             id="register-password"
-            type={showPassword ? 'text' : 'password'}
             name="password"
-            placeholder="Au moins 8 caractères"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
             minLength={8}
-            autoComplete="new-password"
+            disabled={loading}
             required
           />
 
           <button
             type="button"
-            onClick={() => setShowPassword(!showPassword)}
+            onClick={() => setShowPassword((previous) => !previous)}
           >
             {showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
           </button>
@@ -175,23 +176,15 @@ function Register() {
           </label>
           <input
             id="register-confirm-password"
-            type={showConfirmPassword ? 'text' : 'password'}
             name="confirmPassword"
-            placeholder="Confirmez votre mot de passe"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
             value={form.confirmPassword}
             onChange={handleChange}
-            autoComplete="new-password"
+            minLength={8}
+            disabled={loading}
             required
           />
-
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-          >
-            {showConfirmPassword
-              ? 'Masquer la confirmation'
-              : 'Afficher la confirmation'}
-          </button>
 
           {error && (
             <p role="alert" className="auth-error">
@@ -205,12 +198,16 @@ function Register() {
             </p>
           )}
 
-          <button type="submit">Créer mon compte</button>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Création en cours…' : 'Créer mon compte'}
+          </button>
         </form>
 
         <p>
-          Déjà inscrit ? <a href="/login">Se connecter</a>
+          Déjà inscrit ? <Link to="/login">Se connecter</Link>
         </p>
+
+        <Link to="/">Retour à l'accueil</Link>
       </div>
     </main>
   )

@@ -1,466 +1,761 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-const initialJobs = [
-    {
-        id: 1,
-        title: 'Développeur React',
-        location: 'Marseille',
-        description: 'Nous recherchons un développeur React.',
-    },
-    {
-        id: 2,
-        title: 'Data Analyst',
-        location: 'Aix-en-Provence',
-        description: 'Analyse et visualisation de données.',
-    },
-]
-
-const initialApplications = [
-    {
-        id: 1,
-        jobId: 1,
-        name: 'Alice Martin',
-        email: 'alice@example.com',
-        status: 'En attente',
-    },
-    {
-        id: 2,
-        jobId: 1,
-        name: 'Karim Benali',
-        email: 'karim@example.com',
-        status: 'En attente',
-    },
-    {
-        id: 3,
-        jobId: 2,
-        name: 'Sophie Bernard',
-        email: 'sophie@example.com',
-        status: 'En attente',
-    },
-]
-
-const initialCompanyProfile = {
-    companyName: 'Tech Solutions',
-    sector: 'Informatique',
-    description: 'Entreprise spécialisée dans les solutions informatiques.',
-    address: '10 rue de la République',
-    city: 'Marseille',
-    website: 'https://www.example.com',
-    phone: '0400000000',
-    email: 'contact@techsolutions.fr',
-    contactName: 'Jean Dupont',
+const initialOffer = {
+  company_id: '',
+  title: '',
+  city: '',
+  category: 'IT',
+  contract_type: 'CDI',
+  salary_min: '',
+  salary_max: '',
+  work_mode: 'Sur place',
+  work_time: 'Temps plein',
+  experience_level: 'Débutant',
+  description: '',
 }
 
-const emptyJobForm = {
-    title: '',
-    location: '',
-    description: '',
-}
-
-const profileFields = [
-    { name: 'companyName', label: "Nom de l'entreprise" },
-    { name: 'sector', label: "Secteur d'activité" },
-    { name: 'address', label: 'Adresse' },
-    { name: 'city', label: 'Ville' },
-    { name: 'website', label: 'Site web', type: 'url' },
-    { name: 'phone', label: 'Téléphone', type: 'tel' },
-    { name: 'email', label: 'E-mail', type: 'email' },
-    { name: 'contactName', label: 'Nom du responsable' },
+const selectFields = [
+  {
+    name: 'category',
+    label: 'Univers',
+    options: ['IT', 'Marketing', 'Commerce'],
+  },
+  {
+    name: 'contract_type',
+    label: 'Contrat',
+    options: ['CDI', 'CDD', 'Alternance', 'Stage', 'Intérim'],
+  },
+  {
+    name: 'work_mode',
+    label: 'Mode de travail',
+    options: ['Sur place', 'Hybride', 'Distanciel'],
+  },
+  {
+    name: 'work_time',
+    label: 'Temps de travail',
+    options: ['Temps plein', 'Temps partiel'],
+  },
+  {
+    name: 'experience_level',
+    label: "Niveau d'expérience",
+    options: ['Débutant', 'Junior', 'Intermédiaire', 'Senior', 'Expert'],
+  },
 ]
+
+async function apiRequest(path, { method = 'GET', body } = {}) {
+  const headers = { Accept: 'application/json' }
+
+  if (method !== 'GET') {
+    const session = await apiRequest('/api/session/')
+
+    if (!session.authenticated) {
+      throw new Error('Votre session a expiré. Reconnectez-vous.')
+    }
+
+    headers['X-CSRFToken'] = session.csrfToken
+
+    if (body !== undefined) {
+      headers['Content-Type'] = 'application/json'
+    }
+  }
+
+  const response = await fetch(path, {
+    method,
+    credentials: 'same-origin',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+
+  const text = await response.text()
+  let data = {}
+
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error('Réponse inattendue du serveur.')
+    }
+  }
+
+  if (!response.ok) {
+    const details =
+      typeof data === 'object' && data !== null
+        ? Object.values(data).flat().join(' ')
+        : ''
+
+    throw new Error(details || 'La demande a échoué.')
+  }
+
+  return data
+}
 
 function CompanyDashboard() {
-    const [jobs, setJobs] = useState(initialJobs)
-    const [editingId, setEditingId] = useState(null)
-    const [form, setForm] = useState(emptyJobForm)
+  const [companies, setCompanies] = useState([])
+  const [applications, setApplications] = useState([])
+  const [myAds, setMyAds] = useState([])
 
-    const [selectedJobId, setSelectedJobId] = useState(null)
-    const [applications, setApplications] = useState(initialApplications)
+  const [companyName, setCompanyName] = useState('')
+  const [offer, setOffer] = useState(initialOffer)
 
-    const [companyProfile, setCompanyProfile] = useState(initialCompanyProfile)
-    const [profileForm, setProfileForm] = useState(initialCompanyProfile)
-    const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editingAd, setEditingAd] = useState(null)
+  const [editOffer, setEditOffer] = useState(initialOffer)
 
-    const [jobMessage, setJobMessage] = useState('')
-    const [profileMessage, setProfileMessage] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [allowed, setAllowed] = useState(false)
+  const [savingCompany, setSavingCompany] = useState(false)
+  const [savingOffer, setSavingOffer] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [deletingAdId, setDeletingAdId] = useState(null)
 
-    function handleChange(event) {
-        const { name, value } = event.target
+  const [loadError, setLoadError] = useState('')
+  const [companyError, setCompanyError] = useState('')
+  const [companyMessage, setCompanyMessage] = useState('')
+  const [offerError, setOfferError] = useState('')
+  const [offerMessage, setOfferMessage] = useState('')
+  const [adsError, setAdsError] = useState('')
+  const [adsMessage, setAdsMessage] = useState('')
 
-        setForm((previousForm) => ({
-            ...previousForm,
-            [name]: value,
-        }))
-    }
+  useEffect(() => {
+    let active = true
 
-    function handleEdit(job) {
-        setEditingId(job.id)
+    async function loadSpace() {
+      try {
+        const session = await apiRequest('/api/session/')
 
-        setForm({
-            title: job.title,
-            location: job.location,
-            description: job.description,
-        })
-
-        setJobMessage('')
-    }
-
-    function handleSubmit(event) {
-        event.preventDefault()
-
-        setJobs((previousJobs) =>
-            previousJobs.map((job) =>
-                job.id === editingId
-                    ? { ...job, ...form }
-                    : job
-            )
-        )
-
-        setEditingId(null)
-        setForm({ ...emptyJobForm })
-        setJobMessage('Annonce modifiée avec succès !')
-    }
-
-    function handleDelete(id) {
-        if (!window.confirm('Voulez-vous supprimer cette annonce ?')) {
-            return
+        if (!session.authenticated) {
+          throw new Error('Connectez-vous avec un compte employeur.')
         }
 
-        setJobs((previousJobs) =>
-            previousJobs.filter((job) => job.id !== id)
-        )
-
-        setApplications((previousApplications) =>
-            previousApplications.filter(
-                (application) => application.jobId !== id
-            )
-        )
-
-        if (editingId === id) {
-            setEditingId(null)
-            setForm({ ...emptyJobForm })
+        if (!['employer', 'admin'].includes(session.user.role)) {
+          throw new Error('Cet espace est réservé aux employeurs.')
         }
 
-        if (selectedJobId === id) {
-            setSelectedJobId(null)
-        }
+        const [companiesData, applicationsData, adsData] =
+          await Promise.all([
+            apiRequest('/api/my-companies/'),
+            apiRequest('/api/employer-applications/'),
+            apiRequest('/api/ads/'),
+          ])
 
-        setJobMessage('Annonce supprimée avec succès !')
-    }
-
-    function cancelJobEdit() {
-        setEditingId(null)
-        setForm({ ...emptyJobForm })
-    }
-
-    function handleApplicationStatus(applicationId, newStatus) {
-        setApplications((previousApplications) =>
-            previousApplications.map((application) =>
-                application.id === applicationId
-                    ? { ...application, status: newStatus }
-                    : application
-            )
+        const companyIds = new Set(
+          companiesData.map((company) => Number(company.company_id))
         )
+
+        const ownAds = adsData.filter((ad) =>
+          companyIds.has(Number(ad.company?.company_id))
+        )
+
+        if (active) {
+          setCompanies(companiesData)
+          setApplications(applicationsData)
+          setMyAds(ownAds)
+          setAllowed(true)
+          setOffer((previous) => ({
+            ...previous,
+            company_id: String(companiesData[0]?.company_id ?? ''),
+          }))
+        }
+      } catch (error) {
+        if (active) setLoadError(error.message)
+      } finally {
+        if (active) setLoading(false)
+      }
     }
 
-    function startProfileEdit() {
-        setProfileForm({ ...companyProfile })
-        setIsEditingProfile(true)
-        setProfileMessage('')
+    loadSpace()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function refreshAds() {
+    const adsData = await apiRequest('/api/ads/')
+
+    const companyIds = new Set(
+      companies.map((company) => Number(company.company_id))
+    )
+
+    setMyAds(
+      adsData.filter((ad) =>
+        companyIds.has(Number(ad.company?.company_id))
+      )
+    )
+  }
+
+  async function createCompany(event) {
+    event.preventDefault()
+
+    if (savingCompany) return
+
+    setCompanyError('')
+    setCompanyMessage('')
+
+    if (!companyName.trim()) {
+      setCompanyError("Veuillez renseigner le nom de l'entreprise.")
+      return
     }
 
-    function handleProfileChange(event) {
-        const { name, value } = event.target
+    setSavingCompany(true)
 
-        setProfileForm((previousForm) => ({
-            ...previousForm,
-            [name]: value,
-        }))
+    try {
+      const company = await apiRequest('/api/companies/create/', {
+        method: 'POST',
+        body: { name: companyName.trim() },
+      })
+
+      setCompanies((previous) => [...previous, company])
+      setOffer((previous) => ({
+        ...previous,
+        company_id: String(company.company_id),
+      }))
+      setCompanyName('')
+      setCompanyMessage('Entreprise créée.')
+    } catch (error) {
+      setCompanyError(error.message)
+    } finally {
+      setSavingCompany(false)
+    }
+  }
+
+  function changeOffer(event) {
+    const { name, value } = event.target
+
+    setOffer((previous) => ({ ...previous, [name]: value }))
+    setOfferError('')
+    setOfferMessage('')
+  }
+
+  function validateOffer(values) {
+    if (
+      !values.title.trim() ||
+      !values.city.trim() ||
+      !values.description.trim()
+    ) {
+      throw new Error('Renseignez le titre, la ville et la description.')
     }
 
-    function handleProfileSubmit(event) {
-        event.preventDefault()
+    const salaryMin =
+      values.salary_min === '' || values.salary_min == null
+        ? null
+        : Number(values.salary_min)
 
-        setCompanyProfile({ ...profileForm })
-        setIsEditingProfile(false)
-        setProfileMessage('Profil mis à jour avec succès !')
+    const salaryMax =
+      values.salary_max === '' || values.salary_max == null
+        ? null
+        : Number(values.salary_max)
+
+    if (
+      salaryMin !== null &&
+      salaryMax !== null &&
+      salaryMin > salaryMax
+    ) {
+      throw new Error('Le salaire minimum ne peut pas dépasser le maximum.')
     }
 
-    function cancelProfileEdit() {
-        setProfileForm({ ...companyProfile })
-        setIsEditingProfile(false)
-        setProfileMessage('')
+    return {
+      title: values.title.trim(),
+      city: values.city.trim(),
+      category: values.category,
+      contract_type: values.contract_type,
+      salary_min: salaryMin,
+      salary_max: salaryMax,
+      work_mode: values.work_mode,
+      work_time: values.work_time,
+      experience_level: values.experience_level,
+      description: values.description.trim(),
     }
+  }
 
+  async function publishOffer(event) {
+    event.preventDefault()
+
+    if (savingOffer) return
+
+    setOfferError('')
+    setOfferMessage('')
+    setSavingOffer(true)
+
+    try {
+      const validatedOffer = validateOffer(offer)
+
+      await apiRequest('/api/ads/create/', {
+        method: 'POST',
+        body: {
+          ...validatedOffer,
+          company_id: Number(offer.company_id),
+        },
+      })
+
+      setOffer({
+        ...initialOffer,
+        company_id: offer.company_id,
+      })
+
+      setOfferMessage('Votre offre a été publiée !')
+
+      try {
+        await refreshAds()
+      } catch {
+        setAdsError(
+          "Offre publiée, mais la liste n'a pas pu être actualisée."
+        )
+      }
+    } catch (error) {
+      setOfferError(error.message)
+    } finally {
+      setSavingOffer(false)
+    }
+  }
+
+  function startEditing(ad) {
+    setEditingAd(ad.ad_id)
+
+    setEditOffer({
+      company_id: String(ad.company?.company_id ?? ''),
+      title: ad.title ?? '',
+      city: ad.city ?? '',
+      category: ad.category ?? 'IT',
+      contract_type: ad.contract_type ?? 'CDI',
+      salary_min: ad.salary_min ?? '',
+      salary_max: ad.salary_max ?? '',
+      work_mode: ad.work_mode ?? 'Sur place',
+      work_time: ad.work_time ?? 'Temps plein',
+      experience_level: ad.experience_level ?? 'Débutant',
+      description: ad.description ?? '',
+    })
+
+    setAdsError('')
+    setAdsMessage('')
+  }
+
+  function changeEditOffer(event) {
+    const { name, value } = event.target
+
+    setEditOffer((previous) => ({
+      ...previous,
+      [name]: value,
+    }))
+  }
+
+  async function saveEditedOffer(event) {
+    event.preventDefault()
+
+    if (savingEdit || editingAd === null) return
+
+    setAdsError('')
+    setAdsMessage('')
+    setSavingEdit(true)
+
+    try {
+      const validatedOffer = validateOffer(editOffer)
+
+      await apiRequest(`/api/ads/${editingAd}/`, {
+        method: 'PATCH',
+        body: validatedOffer,
+      })
+
+      setEditingAd(null)
+      setAdsMessage('Annonce modifiée avec succès.')
+
+      try {
+        await refreshAds()
+      } catch {
+        setAdsError(
+          "Annonce modifiée, mais la liste n'a pas pu être actualisée."
+        )
+      }
+    } catch (error) {
+      setAdsError(error.message)
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function deleteOffer(ad) {
+    const confirmed = window.confirm(
+      `Voulez-vous vraiment supprimer l'annonce "${ad.title}" ?`
+    )
+
+    if (!confirmed) return
+
+    setAdsError('')
+    setAdsMessage('')
+    setDeletingAdId(ad.ad_id)
+
+    try {
+      await apiRequest(`/api/ads/${ad.ad_id}/`, {
+        method: 'DELETE',
+      })
+
+      setMyAds((previous) =>
+        previous.filter((item) => item.ad_id !== ad.ad_id)
+      )
+
+      if (editingAd === ad.ad_id) {
+        setEditingAd(null)
+      }
+
+      setAdsMessage('Annonce supprimée avec succès.')
+    } catch (error) {
+      setAdsError(error.message)
+    } finally {
+      setDeletingAdId(null)
+    }
+  }
+
+  function renderOfferFields(values, onChange, prefix, includeCompany) {
     return (
-        <main className="company-dashboard">
-            <h1>Espace employeur</h1>
-            <Link to="/" className="dashboard-back-link">
-                ← Retour à l'accueil
-            </Link>
-            <p>Gérez vos annonces et consultez les candidatures reçues.</p>
-
-            <section className="company-profile">
-                <h2>Mon profil entreprise</h2>
-
-                {profileMessage && (
-                    <p className="admin-message" role="status">
-                        {profileMessage}
-                    </p>
-                )}
-
-                {!isEditingProfile ? (
-                    <div className="company-profile-details">
-                        <p>
-                            <strong>Entreprise :</strong> {companyProfile.companyName}
-                        </p>
-                        <p>
-                            <strong>Secteur :</strong> {companyProfile.sector}
-                        </p>
-                        <p>
-                            <strong>Description :</strong> {companyProfile.description}
-                        </p>
-                        <p>
-                            <strong>Adresse :</strong> {companyProfile.address}
-                        </p>
-                        <p>
-                            <strong>Ville :</strong> {companyProfile.city}
-                        </p>
-                        <p>
-                            <strong>Site web :</strong> {companyProfile.website}
-                        </p>
-                        <p>
-                            <strong>Téléphone :</strong> {companyProfile.phone}
-                        </p>
-                        <p>
-                            <strong>E-mail :</strong> {companyProfile.email}
-                        </p>
-                        <p>
-                            <strong>Responsable :</strong> {companyProfile.contactName}
-                        </p>
-
-                        <button type="button" onClick={startProfileEdit}>
-                            Modifier mon profil
-                        </button>
-                    </div>
-                ) : (
-                    <form
-                        onSubmit={handleProfileSubmit}
-                        className="company-profile-form"
-                    >
-                        {profileFields.map((field) => (
-                            <div
-                                key={field.name}
-                                className="company-profile-field"
-                            >
-                                <label htmlFor={`profile-${field.name}`}>
-                                    {field.label}
-                                </label>
-
-                                <input
-                                    id={`profile-${field.name}`}
-                                    type={field.type || 'text'}
-                                    name={field.name}
-                                    value={profileForm[field.name]}
-                                    onChange={handleProfileChange}
-                                    required
-                                />
-                            </div>
-                        ))}
-
-                        <div className="company-profile-field">
-                            <label htmlFor="company-description">
-                                Description de l'entreprise
-                            </label>
-
-                            <textarea
-                                id="company-description"
-                                name="description"
-                                value={profileForm.description}
-                                onChange={handleProfileChange}
-                                required
-                            />
-                        </div>
-
-                        <button type="submit">
-                            Enregistrer les modifications
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={cancelProfileEdit}
-                        >
-                            Annuler
-                        </button>
-                    </form>
-                )}
-            </section>
-
-            <section>
-                <h2>Mes annonces ({jobs.length})</h2>
-
-                {jobMessage && (
-                    <p className="admin-message" role="status">
-                        {jobMessage}
-                    </p>
-                )}
-
-                {jobs.length === 0 && (
-                    <p>Vous n'avez aucune annonce pour le moment.</p>
-                )}
-
-                {jobs.map((job) => {
-                    const jobApplications = applications.filter(
-                        (application) => application.jobId === job.id
-                    )
-
-                    return (
-                        <div key={job.id} className="company-job">
-                            <h3>{job.title}</h3>
-                            <p>Ville : {job.location}</p>
-                            <p>{job.description}</p>
-
-                            <p>
-                                Candidatures reçues : {jobApplications.length}
-                            </p>
-
-                            <button
-                                type="button"
-                                onClick={() => handleEdit(job)}
-                            >
-                                Modifier
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => handleDelete(job.id)}
-                            >
-                                Supprimer
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setSelectedJobId(
-                                        selectedJobId === job.id ? null : job.id
-                                    )
-                                }
-                            >
-                                {selectedJobId === job.id
-                                    ? 'Masquer les candidatures'
-                                    : 'Voir les candidatures'}
-                            </button>
-
-                            {selectedJobId === job.id && (
-                                <div className="company-applications">
-                                    <h4>Candidatures reçues</h4>
-
-                                    {jobApplications.length === 0 && (
-                                        <p>Aucune candidature pour cette annonce.</p>
-                                    )}
-
-                                    {jobApplications.map((application) => (
-                                        <div
-                                            key={application.id}
-                                            className="company-application"
-                                        >
-                                            <p>
-                                                <strong>{application.name}</strong>
-                                            </p>
-
-                                            <p>{application.email}</p>
-                                            <p>Statut : {application.status}</p>
-
-                                            <label htmlFor={`status-${application.id}`}>
-                                                Modifier le statut
-                                            </label>
-
-                                            <select
-                                                id={`status-${application.id}`}
-                                                value={application.status}
-                                                onChange={(event) =>
-                                                    handleApplicationStatus(
-                                                        application.id,
-                                                        event.target.value
-                                                    )
-                                                }
-                                            >
-                                                <option value="En attente">
-                                                    En attente
-                                                </option>
-                                                <option value="Acceptée">
-                                                    Acceptée
-                                                </option>
-                                                <option value="Refusée">
-                                                    Refusée
-                                                </option>
-                                            </select>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )
-                })}
-            </section>
-
-            {editingId !== null && (
-                <form
-                    onSubmit={handleSubmit}
-                    className="company-edit-form"
+      <>
+        {includeCompany && (
+          <>
+            <label htmlFor={`${prefix}-company`}>Entreprise</label>
+            <select
+              id={`${prefix}-company`}
+              name="company_id"
+              value={values.company_id}
+              onChange={onChange}
+              required
+            >
+              {companies.map((company) => (
+                <option
+                  key={company.company_id}
+                  value={company.company_id}
                 >
-                    <h2>Modifier l'annonce</h2>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
 
-                    <label htmlFor="company-job-title">
-                        Intitulé du poste
-                    </label>
-                    <input
-                        id="company-job-title"
-                        type="text"
-                        name="title"
-                        value={form.title}
-                        onChange={handleChange}
-                        required
-                    />
+        <label htmlFor={`${prefix}-title`}>Intitulé du poste</label>
+        <input
+          id={`${prefix}-title`}
+          name="title"
+          value={values.title}
+          onChange={onChange}
+          maxLength={150}
+          required
+        />
 
-                    <label htmlFor="company-job-location">
-                        Ville
-                    </label>
-                    <input
-                        id="company-job-location"
-                        type="text"
-                        name="location"
-                        value={form.location}
-                        onChange={handleChange}
-                        required
-                    />
+        <label htmlFor={`${prefix}-city`}>Ville</label>
+        <input
+          id={`${prefix}-city`}
+          name="city"
+          value={values.city}
+          onChange={onChange}
+          maxLength={100}
+          required
+        />
 
-                    <label htmlFor="company-job-description">
-                        Description
-                    </label>
-                    <textarea
-                        id="company-job-description"
-                        name="description"
-                        value={form.description}
-                        onChange={handleChange}
-                        required
-                    />
+        {selectFields.map((field) => (
+          <div key={field.name}>
+            <label htmlFor={`${prefix}-${field.name}`}>
+              {field.label}
+            </label>
 
-                    <button type="submit">
-                        Enregistrer
+            <select
+              id={`${prefix}-${field.name}`}
+              name={field.name}
+              value={values[field.name]}
+              onChange={onChange}
+              required
+            >
+              {field.options.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+
+        <label htmlFor={`${prefix}-salary-min`}>
+          Salaire minimum (€ brut/mois, facultatif)
+        </label>
+        <input
+          id={`${prefix}-salary-min`}
+          name="salary_min"
+          type="number"
+          min="0"
+          step="1"
+          value={values.salary_min}
+          onChange={onChange}
+        />
+
+        <label htmlFor={`${prefix}-salary-max`}>
+          Salaire maximum (€ brut/mois, facultatif)
+        </label>
+        <input
+          id={`${prefix}-salary-max`}
+          name="salary_max"
+          type="number"
+          min="0"
+          step="1"
+          value={values.salary_max}
+          onChange={onChange}
+        />
+
+        <label htmlFor={`${prefix}-description`}>
+          Description du poste
+        </label>
+        <textarea
+          id={`${prefix}-description`}
+          name="description"
+          rows={8}
+          value={values.description}
+          onChange={onChange}
+          required
+        />
+      </>
+    )
+  }
+
+  return (
+    <main className="company-dashboard">
+      <h1>Espace employeur</h1>
+
+      <Link to="/" className="dashboard-back-link">
+        ← Retour aux offres
+      </Link>
+
+      {loading && <p role="status">Chargement…</p>}
+      {loadError && <p role="alert">{loadError}</p>}
+
+      {!loading && !allowed && (
+        <Link to="/login">
+          Se connecter avec un compte employeur
+        </Link>
+      )}
+
+      {!loading && allowed && (
+        <>
+          <section>
+            <h2>Mes entreprises ({companies.length})</h2>
+
+            {companies.length === 0 && (
+              <p>Créez une entreprise avant de publier une offre.</p>
+            )}
+
+            {companies.map((company) => (
+              <article
+                key={company.company_id}
+                className="job-card"
+              >
+                <h3>{company.name}</h3>
+              </article>
+            ))}
+
+            <h2>Créer une entreprise</h2>
+
+            <form className="auth-form" onSubmit={createCompany}>
+              <label htmlFor="company-name">
+                Nom de l'entreprise
+              </label>
+
+              <input
+                id="company-name"
+                value={companyName}
+                onChange={(event) =>
+                  setCompanyName(event.target.value)
+                }
+                maxLength={150}
+                disabled={savingCompany}
+                required
+              />
+
+              <button type="submit" disabled={savingCompany}>
+                {savingCompany
+                  ? 'Création…'
+                  : 'Créer mon entreprise'}
+              </button>
+
+              {companyError && (
+                <p role="alert">{companyError}</p>
+              )}
+
+              {companyMessage && (
+                <p role="status">{companyMessage}</p>
+              )}
+            </form>
+          </section>
+
+          <section className="employer-ads">
+            <h2>Mes annonces ({myAds.length})</h2>
+
+            {adsError && <p role="alert">{adsError}</p>}
+            {adsMessage && <p role="status">{adsMessage}</p>}
+
+            {myAds.length === 0 ? (
+              <p>Vous n'avez publié aucune annonce.</p>
+            ) : (
+              myAds.map((ad) => (
+                <article key={ad.ad_id} className="job-card">
+                  <h3>{ad.title}</h3>
+
+                  <p>
+                    <strong>Entreprise :</strong>{' '}
+                    {ad.company?.name}
+                  </p>
+
+                  <p>
+                    <strong>Ville :</strong> {ad.city}
+                  </p>
+
+                  <p>
+                    <strong>Contrat :</strong> {ad.contract_type}
+                  </p>
+
+                  <Link to={`/jobs/${ad.ad_id}`}>
+                    Voir l'annonce
+                  </Link>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => startEditing(ad)}
+                      disabled={
+                        savingEdit || deletingAdId !== null
+                      }
+                    >
+                      Modifier
                     </button>
 
                     <button
-                        type="button"
-                        onClick={cancelJobEdit}
+                      type="button"
+                      onClick={() => deleteOffer(ad)}
+                      disabled={
+                        savingEdit || deletingAdId !== null
+                      }
                     >
-                        Annuler
+                      {deletingAdId === ad.ad_id
+                        ? 'Suppression…'
+                        : 'Supprimer'}
                     </button>
-                </form>
+                  </div>
+
+                  {editingAd === ad.ad_id && (
+                    <form
+                      className="job-publication-form"
+                      onSubmit={saveEditedOffer}
+                    >
+                      <fieldset disabled={savingEdit}>
+                        <legend>Modifier cette annonce</legend>
+
+                        <p>
+                          Entreprise : {ad.company?.name}
+                        </p>
+
+                        {renderOfferFields(
+                          editOffer,
+                          changeEditOffer,
+                          `edit-${ad.ad_id}`,
+                          false
+                        )}
+
+                        <button type="submit">
+                          {savingEdit
+                            ? 'Enregistrement…'
+                            : 'Enregistrer les modifications'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingAd(null)
+                            setAdsError('')
+                          }}
+                        >
+                          Annuler
+                        </button>
+                      </fieldset>
+                    </form>
+                  )}
+                </article>
+              ))
             )}
-        </main>
-    )
+          </section>
+
+          <section className="employer-applications">
+            <h2>
+              Candidatures reçues ({applications.length})
+            </h2>
+
+            {applications.length === 0 ? (
+              <p>Aucune candidature reçue pour le moment.</p>
+            ) : (
+              <div className="applications-list">
+                {applications.map((application) => (
+                  <article
+                    key={application.application_id}
+                    className="job-card"
+                  >
+                    <h3>{application.ad}</h3>
+
+                    <p>
+                      <strong>Candidat :</strong>{' '}
+                      {application.person}
+                    </p>
+
+                    <p>
+                      <strong>Date :</strong>{' '}
+                      {new Date(
+                        application.application_date
+                      ).toLocaleDateString('fr-FR')}
+                    </p>
+
+                    <p>
+                      <strong>Message :</strong>{' '}
+                      {application.message || 'Aucun message'}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {companies.length > 0 && (
+            <section className="job-publication">
+              <h2>Publier une offre</h2>
+
+              <form
+                className="job-publication-form"
+                onSubmit={publishOffer}
+              >
+                <fieldset disabled={savingOffer}>
+                  <legend>Informations de l'offre</legend>
+
+                  {renderOfferFields(
+                    offer,
+                    changeOffer,
+                    'offer',
+                    true
+                  )}
+
+                  <button type="submit">
+                    {savingOffer
+                      ? 'Publication…'
+                      : "Publier l'offre"}
+                  </button>
+                </fieldset>
+
+                {offerError && (
+                  <p role="alert">{offerError}</p>
+                )}
+
+                {offerMessage && (
+                  <p role="status">{offerMessage}</p>
+                )}
+              </form>
+            </section>
+          )}
+        </>
+      )}
+    </main>
+  )
 }
 
 export default CompanyDashboard
