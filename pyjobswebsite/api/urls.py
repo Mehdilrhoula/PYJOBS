@@ -1,3 +1,12 @@
+from .admin_views import (
+    AdminApplicationDetailView,
+    AdminCompanyCreateView,
+    AdminUserListCreateView,
+    AdminUserDetailView,
+    AdminCompanyListView,
+    AdminCompanyDetailView,
+)
+
 
 from django.urls import path
 
@@ -7,11 +16,13 @@ from .views import (
     AdsCreateView,
     AdsDetailView,
     CompanyCreateView,
+    CompanyUpdateView,
     MyCompaniesView,
     ApplicationCreateView,
     ApplicationListView,
     MyApplicationsView,
     EmployerApplicationsView,
+    ApplicationStatusUpdateView,
     RegisterView,
     LoginView,
     LogoutView,
@@ -21,6 +32,24 @@ from .views import (
 
 
 urlpatterns = [
+    path("admin/applications/<int:application_id>/", AdminApplicationDetailView.as_view(), name="admin-application-detail"),
+
+    path("admin/companies/create/", AdminCompanyCreateView.as_view(), name="admin-company-create"),
+
+    path(
+        "admin/companies/",
+        AdminCompanyListView.as_view(),
+        name="admin-companies",
+    ),
+    path(
+        "admin/companies/<int:company_id>/",
+        AdminCompanyDetailView.as_view(),
+        name="admin-company-detail",
+    ),
+
+    path("admin/users/", AdminUserListCreateView.as_view(), name="admin-users"),
+    path("admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="admin-user-detail"),
+
     path(
         "session/",
         SessionView.as_view(),
@@ -72,6 +101,11 @@ urlpatterns = [
         name="company-create",
     ),
     path(
+        "companies/<int:company_id>/",
+        CompanyUpdateView.as_view(),
+        name="company-update",
+    ),
+    path(
         "my-companies/",
         MyCompaniesView.as_view(),
         name="my-companies",
@@ -95,5 +129,10 @@ urlpatterns = [
         "employer-applications/",
         EmployerApplicationsView.as_view(),
         name="employer-applications",
+    ),
+    path(
+        "applications/<int:application_id>/status/",
+        ApplicationStatusUpdateView.as_view(),
+        name="application-status-update",
     ),
 ]

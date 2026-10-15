@@ -1,5 +1,18 @@
+
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+
+const statusLabels = {
+  pending: 'En attente',
+  accepted: 'Retenue',
+  rejected: 'Refusée',
+}
+
+const statusMessages = {
+  pending: 'Votre candidature est en cours de traitement.',
+  accepted: 'Bonne nouvelle ! Votre candidature a été retenue.',
+  rejected: "Votre candidature n'a pas été retenue pour cette offre.",
+}
 
 function CandidateDashboard() {
   const [applications, setApplications] = useState([])
@@ -66,11 +79,32 @@ function CandidateDashboard() {
     <main className="candidate-dashboard">
       <h1>Espace candidat</h1>
 
-      <Link to="/" className="dashboard-back-link">
+      <Link to="/jobs" className="dashboard-back-link">
         ← Retour aux offres
       </Link>
 
       <p>Retrouvez les candidatures enregistrées avec votre compte.</p>
+
+      {!loading && !error && (
+        <div className="dashboard-stats">
+          <div className="dashboard-stat">
+            <span>Total candidatures</span>
+            <strong>{applications.length}</strong>
+          </div>
+          <div className="dashboard-stat">
+            <span>En attente</span>
+            <strong>{applications.filter(a => a.status === 'pending').length}</strong>
+          </div>
+          <div className="dashboard-stat">
+            <span>Retenues</span>
+            <strong>{applications.filter(a => a.status === 'accepted').length}</strong>
+          </div>
+          <div className="dashboard-stat">
+            <span>Refusées</span>
+            <strong>{applications.filter(a => a.status === 'rejected').length}</strong>
+          </div>
+        </div>
+      )}
 
       <section className="candidate-section">
         <h2>
@@ -131,6 +165,18 @@ function CandidateDashboard() {
                 `${application.application_date}T12:00:00`
               ).toLocaleDateString('fr-FR')}
             </p>
+
+            <div className={`application-status application-status-${application.status}`}>
+              <p>
+                <strong>Statut de votre candidature :</strong>{' '}
+                {statusLabels[application.status] || 'Inconnu'}
+              </p>
+
+              <p>
+                {statusMessages[application.status] ||
+                  'Le statut de cette candidature est indisponible.'}
+              </p>
+            </div>
 
             <p>
               <strong>Votre message :</strong>

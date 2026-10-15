@@ -12,6 +12,7 @@ import CompanyDashboard from './pages/CompanyDashboard'
 import CandidateDashboard from './pages/CandidateDashboard'
 import JobDetails from './pages/JobDetails'
 import Profile from './pages/Profile'
+import Home from './pages/Home'
 import './App.css'
 
 function App() {
@@ -131,8 +132,9 @@ function App() {
     <>
       <Header userRole={userRole} setShowJobForm={setShowJobForm} />
       <Routes>
+        <Route path="/" element={<Home jobs={jobs} jobsError={jobsError} />} />
         <Route
-          path="/"
+          path="/jobs"
           element={
             <main>
               {userRole === 'company' && showJobForm && (
@@ -192,6 +194,11 @@ function App() {
         <Route path="/jobs/:id" element={<JobDetails />} />
         <Route path="/profile" element={<Profile />} />
       </Routes>
+
+      <footer className="pyjobs-footer">
+        <p><strong>PYJOBS</strong> — Votre plateforme de recrutement</p>
+        <p>Projet Epitech réalisé par Mehdi Lrhoula et Ruben Bernardo Martins</p>
+      </footer>
     </>
   )
 }

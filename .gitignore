@@ -4,3 +4,17 @@ __pycache__/
 *.py[cod]
 /pyjobswebsite/db.local.sqlite3
 /pyjobswebsite/db.local.sqlite3-*
+
+# PYJOBS - Secrets et configuration locale
+.env
+.env.*
+!.env.example
+!.env.sample
+# Bases de données locales
+*.sqlite3
+*.sqlite3-*
+# Sauvegardes et scripts temporaires
+backup_*/
+*.bak
+*.backup
+# Fichiers Python générés

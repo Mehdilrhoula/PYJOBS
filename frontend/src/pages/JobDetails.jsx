@@ -1,10 +1,11 @@
 
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import ApplicationForm from '../components/ApplicationForm'
 
 function JobDetails() {
   const { id } = useParams()
+  const navigate = useNavigate()
 
   const [job, setJob] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -12,6 +13,9 @@ function JobDetails() {
 
   const [session, setSession] = useState(null)
   const [sessionLoading, setSessionLoading] = useState(true)
+  const [canManage, setCanManage] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [managementError, setManagementError] = useState('')
 
   const [showApplication, setShowApplication] = useState(false)
   const [applicationMessage, setApplicationMessage] = useState('')
@@ -49,6 +53,7 @@ function JobDetails() {
           id: ad.ad_id,
           title: ad.title,
           company: ad.company.name,
+          companyId: ad.company.company_id,
           location: ad.city,
           category: ad.category,
           contractType: ad.contract_type,
@@ -109,6 +114,96 @@ function JobDetails() {
 
     return () => controller.abort()
   }, [])
+
+
+  useEffect(() => {
+    if (sessionLoading || !job) return
+
+    if (session?.authenticated && session?.user?.role === 'admin') {
+      setCanManage(true)
+      return
+    }
+
+    if (
+      !session?.authenticated ||
+      session?.user?.role !== 'employer'
+    ) {
+      setCanManage(false)
+      return
+    }
+
+    const controller = new AbortController()
+
+    async function checkOwnership() {
+      try {
+        const response = await fetch('/api/my-companies/', {
+          credentials: 'same-origin',
+          signal: controller.signal,
+        })
+
+        if (!response.ok) throw new Error('Accès refusé')
+
+        const companies = await response.json()
+
+        if (!controller.signal.aborted) {
+          setCanManage(
+            companies.some(
+              (company) =>
+                Number(company.company_id) === Number(job.companyId)
+            )
+          )
+        }
+      } catch {
+        if (!controller.signal.aborted) setCanManage(false)
+      }
+    }
+
+    checkOwnership()
+    return () => controller.abort()
+  }, [job, session, sessionLoading])
+
+  async function deleteCurrentJob() {
+    if (!window.confirm(
+      "Supprimer définitivement cette annonce ? Les candidatures associées seront également supprimées."
+    )) return
+
+    setDeleting(true)
+    setManagementError('')
+
+    try {
+      const responseSession = await fetch('/api/session/', {
+        credentials: 'same-origin',
+      })
+
+      if (!responseSession.ok) throw new Error('Session indisponible.')
+
+      const currentSession = await responseSession.json()
+
+      if (!currentSession.authenticated) {
+        throw new Error('Vous devez être connecté.')
+      }
+
+      const response = await fetch(`/api/ads/${job.id}/`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: {
+          'X-CSRFToken': currentSession.csrfToken,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Le serveur a refusé la suppression.')
+      }
+
+      navigate(currentSession.user.role === 'admin'
+        ? '/admin'
+        : '/company/dashboard')
+    } catch (error) {
+      setManagementError(error.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   function toggleApplication() {
     setShowApplication((previous) => !previous)
@@ -209,6 +304,43 @@ function JobDetails() {
 
         {sessionLoading && (
           <p role="status">Vérification de votre session…</p>
+        )}
+
+
+        {!sessionLoading && canManage && (
+          <div className="job-management-actions">
+            <Link
+              to={
+                session?.user?.role === 'admin'
+                  ? '/admin'
+                  : `/company/dashboard?editAd=${job.id}`
+              }
+            >
+              Modifier l'annonce
+            </Link>
+
+            <button
+              type="button"
+              onClick={deleteCurrentJob}
+              disabled={deleting}
+            >
+              {deleting ? 'Suppression…' : "Supprimer l'annonce"}
+            </button>
+
+            <Link
+              to={
+                session?.user?.role === 'admin'
+                  ? '/admin'
+                  : '/company/dashboard?section=applications'
+              }
+            >
+              Voir les candidatures
+            </Link>
+          </div>
+        )}
+
+        {managementError && (
+          <p role="alert">{managementError}</p>
         )}
 
         {!sessionLoading && isCandidate && (

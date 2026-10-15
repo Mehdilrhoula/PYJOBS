@@ -17,11 +17,13 @@ from .models import Ads, Application, Company, Person
 from .serializers import (
     AdsSerializer,
     AdsCreateSerializer,
+    AdsUpdateSerializer,
     ApplicationSerializer,
     ApplicationListSerializer,
     MyApplicationSerializer,
     CompanySerializer,
     CompanyCreateSerializer,
+    CompanyUpdateSerializer,
     RegisterSerializer,
     ProfileSerializer,
     ChangePasswordSerializer,
@@ -84,6 +86,26 @@ class MyCompaniesView(generics.ListAPIView):
         )
 
 
+class CompanyUpdateView(generics.UpdateAPIView):
+    serializer_class = CompanyUpdateSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "company_id"
+    http_method_names = ["patch", "options"]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Company.objects.all()
+
+        if not has_role(self.request.user, "employer"):
+            raise PermissionDenied(
+                "Accès réservé aux employeurs."
+            )
+
+        return Company.objects.filter(
+            owner=self.request.user
+        )
+
+
 class AdsCreateView(generics.CreateAPIView):
     queryset = Ads.objects.all()
     serializer_class = AdsCreateSerializer
@@ -119,6 +141,12 @@ class AdsDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ads.objects.select_related("company").all()
     serializer_class = AdsSerializer
     lookup_field = "ad_id"
+
+    def get_serializer_class(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return AdsUpdateSerializer
+
+        return AdsSerializer
 
     def get_permissions(self):
         if self.request.method in ("GET", "HEAD", "OPTIONS"):
@@ -227,6 +255,56 @@ class EmployerApplicationsView(generics.ListAPIView):
         ).select_related(
             "person",
             "ad",
+        )
+
+
+class ApplicationStatusUpdateView(generics.UpdateAPIView):
+    serializer_class = ApplicationListSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "application_id"
+    http_method_names = ["patch", "options"]
+
+    def get_queryset(self):
+        if self.request.user.is_staff:
+            return Application.objects.all()
+
+        if not has_role(self.request.user, "employer"):
+            raise PermissionDenied(
+                "Accès réservé aux employeurs."
+            )
+
+        return Application.objects.filter(
+            ad__company__owner=self.request.user
+        )
+
+    def patch(self, request, *args, **kwargs):
+        application = self.get_object()
+
+        new_status = request.data.get("status")
+
+        valid_statuses = [
+            "pending",
+            "accepted",
+            "rejected",
+        ]
+
+        if new_status not in valid_statuses:
+            return Response(
+                {
+                    "status": (
+                        "Statut invalide. Choisissez pending, "
+                        "accepted ou rejected."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        application.status = new_status
+        application.save(update_fields=["status"])
+
+        return Response(
+            self.get_serializer(application).data,
+            status=status.HTTP_200_OK,
         )
 
 

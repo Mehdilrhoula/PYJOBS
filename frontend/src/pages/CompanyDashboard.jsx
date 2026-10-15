@@ -1,6 +1,8 @@
 
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import CompanyEditor from '../components/CompanyEditor'
+import ApplicationManager from '../components/ApplicationManager'
 
 const initialOffer = {
   company_id: '',
@@ -95,6 +97,7 @@ function CompanyDashboard() {
   const [companies, setCompanies] = useState([])
   const [applications, setApplications] = useState([])
   const [myAds, setMyAds] = useState([])
+  const [dashboardTab, setDashboardTab] = useState('companies')
 
   const [companyName, setCompanyName] = useState('')
   const [offer, setOffer] = useState(initialOffer)
@@ -170,6 +173,56 @@ function CompanyDashboard() {
       active = false
     }
   }, [])
+
+
+  useEffect(() => {
+    if (loading || !allowed) return
+
+    const params = new URLSearchParams(window.location.search)
+    const editId = params.get('editAd')
+    const section = params.get('section')
+
+    if (editId) {
+      setDashboardTab('ads')
+      const ad = myAds.find(
+        (item) => Number(item.ad_id) === Number(editId)
+      )
+
+      if (ad) {
+        startEditing(ad)
+
+        window.setTimeout(() => {
+          const link = document.querySelector(
+            `a[href="/jobs/${ad.ad_id}"]`
+          )
+          const article = link?.closest('article')
+
+          ;(article?.querySelector('form') || article)
+            ?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+        }, 150)
+      }
+    } else if (section === 'applications') {
+      setDashboardTab('applications')
+      window.setTimeout(() => {
+        document.querySelector('.employer-applications')
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          })
+      }, 150)
+    }
+
+    if (editId || section) {
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname
+      )
+    }
+  }, [loading, allowed, myAds])
 
   async function refreshAds() {
     const adsData = await apiRequest('/api/ads/')
@@ -518,7 +571,7 @@ function CompanyDashboard() {
     <main className="company-dashboard">
       <h1>Espace employeur</h1>
 
-      <Link to="/" className="dashboard-back-link">
+      <Link to="/jobs" className="dashboard-back-link">
         ← Retour aux offres
       </Link>
 
@@ -533,7 +586,32 @@ function CompanyDashboard() {
 
       {!loading && allowed && (
         <>
-          <section>
+          <div className="dashboard-stats">
+            <div className="dashboard-stat"><span>Mes entreprises</span><strong>{companies.length}</strong></div>
+            <div className="dashboard-stat"><span>Mes annonces</span><strong>{myAds.length}</strong></div>
+            <div className="dashboard-stat"><span>Candidatures reçues</span><strong>{applications.length}</strong></div>
+          </div>
+
+          <nav className="dashboard-tabs" aria-label="Gestion de l'espace employeur">
+            {[
+              ['companies', 'Mes entreprises'],
+              ['ads', 'Mes annonces'],
+              ['applications', 'Candidatures reçues'],
+              ['publish', 'Publier une offre'],
+            ].map(([tab, label]) => (
+              <button
+                key={tab}
+                type="button"
+                className={dashboardTab === tab ? 'dashboard-tab-active' : ''}
+                aria-current={dashboardTab === tab ? 'page' : undefined}
+                onClick={() => setDashboardTab(tab)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <section className={dashboardTab === 'companies' ? 'dashboard-panel' : 'dashboard-panel dashboard-panel-hidden'}>
             <h2>Mes entreprises ({companies.length})</h2>
 
             {companies.length === 0 && (
@@ -541,17 +619,38 @@ function CompanyDashboard() {
             )}
 
             {companies.map((company) => (
-              <article
+              <CompanyEditor
                 key={company.company_id}
-                className="job-card"
-              >
-                <h3>{company.name}</h3>
-              </article>
+                company={company}
+                onUpdated={(updatedCompany) => {
+                  setCompanies((previous) =>
+                    previous.map((item) =>
+                      item.company_id === updatedCompany.company_id
+                        ? updatedCompany
+                        : item
+                    )
+                  )
+
+                  setMyAds((previous) =>
+                    previous.map((ad) =>
+                      ad.company?.company_id === updatedCompany.company_id
+                        ? { ...ad, company: updatedCompany }
+                        : ad
+                    )
+                  )
+                }}
+              />
             ))}
 
-            <h2>Créer une entreprise</h2>
+            <div className="company-premium-create">
+              <div className="company-premium-heading">
+                <h2>Créer une entreprise</h2>
+                <p>
+                  Ajoutez une entreprise pour publier vos offres d'emploi.
+                </p>
+              </div>
 
-            <form className="auth-form" onSubmit={createCompany}>
+            <form className="auth-form company-premium-form" onSubmit={createCompany}>
               <label htmlFor="company-name">
                 Nom de l'entreprise
               </label>
@@ -581,9 +680,12 @@ function CompanyDashboard() {
                 <p role="status">{companyMessage}</p>
               )}
             </form>
+            </div>
           </section>
 
-          <section className="employer-ads">
+          <section className={dashboardTab === 'ads'
+              ? 'employer-ads dashboard-panel'
+              : 'employer-ads dashboard-panel dashboard-panel-hidden'}>
             <h2>Mes annonces ({myAds.length})</h2>
 
             {adsError && <p role="alert">{adsError}</p>}
@@ -616,7 +718,7 @@ function CompanyDashboard() {
                   <div>
                     <button
                       type="button"
-                      onClick={() => startEditing(ad)}
+                      className="dashboard-btn-edit" onClick={() => startEditing(ad)}
                       disabled={
                         savingEdit || deletingAdId !== null
                       }
@@ -626,7 +728,7 @@ function CompanyDashboard() {
 
                     <button
                       type="button"
-                      onClick={() => deleteOffer(ad)}
+                      className="dashboard-btn-delete" onClick={() => deleteOffer(ad)}
                       disabled={
                         savingEdit || deletingAdId !== null
                       }
@@ -679,7 +781,9 @@ function CompanyDashboard() {
             )}
           </section>
 
-          <section className="employer-applications">
+          <section className={dashboardTab === 'applications'
+              ? 'employer-applications dashboard-panel'
+              : 'employer-applications dashboard-panel dashboard-panel-hidden'}>
             <h2>
               Candidatures reçues ({applications.length})
             </h2>
@@ -689,36 +793,29 @@ function CompanyDashboard() {
             ) : (
               <div className="applications-list">
                 {applications.map((application) => (
-                  <article
+                  <ApplicationManager
                     key={application.application_id}
-                    className="job-card"
-                  >
-                    <h3>{application.ad}</h3>
-
-                    <p>
-                      <strong>Candidat :</strong>{' '}
-                      {application.person}
-                    </p>
-
-                    <p>
-                      <strong>Date :</strong>{' '}
-                      {new Date(
-                        application.application_date
-                      ).toLocaleDateString('fr-FR')}
-                    </p>
-
-                    <p>
-                      <strong>Message :</strong>{' '}
-                      {application.message || 'Aucun message'}
-                    </p>
-                  </article>
+                    application={application}
+                    onUpdated={(updatedApplication) => {
+                      setApplications((previous) =>
+                        previous.map((item) =>
+                          item.application_id ===
+                          updatedApplication.application_id
+                            ? updatedApplication
+                            : item
+                        )
+                      )
+                    }}
+                  />
                 ))}
               </div>
             )}
           </section>
 
           {companies.length > 0 && (
-            <section className="job-publication">
+            <section className={dashboardTab === 'publish'
+                ? 'job-publication dashboard-panel'
+                : 'job-publication dashboard-panel dashboard-panel-hidden'}>
               <h2>Publier une offre</h2>
 
               <form

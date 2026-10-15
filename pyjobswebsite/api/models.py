@@ -101,20 +101,52 @@ class Ads(models.Model):
         return self.title
 
 
+
 class Application(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "En attente"),
+        ("accepted", "Retenue"),
+        ("rejected", "Refusée"),
+    ]
+
     application_id = models.AutoField(primary_key=True)
+
     person = models.ForeignKey(
         Person,
         on_delete=models.PROTECT,
         db_column="person_id",
     )
+
     ad = models.ForeignKey(
         Ads,
         on_delete=models.CASCADE,
         db_column="ad_id",
     )
+
     message = models.TextField()
-    application_date = models.DateField(default=timezone.localdate)
+
+    application_date = models.DateField(
+        default=timezone.localdate
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
+    )
+
+    class Meta:
+        db_table = "Application"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["person", "ad"],
+                name="UQ_Application_Person_Ads",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.person} - {self.ad}"
+
 
     class Meta:
         db_table = "Application"

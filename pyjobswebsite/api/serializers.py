@@ -22,8 +22,25 @@ class CompanyCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return Company.objects.create(
             **validated_data,
-            owner=self.context["request"].user,
+            owner=self.context["request"].user
         )
+
+
+class CompanyUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ["company_id", "name"]
+        read_only_fields = ["company_id"]
+
+    def validate_name(self, value):
+        name = value.strip()
+
+        if not name:
+            raise serializers.ValidationError(
+                "Le nom de l'entreprise ne peut pas être vide."
+            )
+
+        return name
 
 
 class AdsSerializer(serializers.ModelSerializer):
@@ -32,9 +49,17 @@ class AdsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ads
         fields = [
-            "ad_id", "title", "company", "category", "city",
-            "contract_type", "salary_min", "salary_max",
-            "work_mode", "work_time", "experience_level",
+            "ad_id",
+            "title",
+            "company",
+            "category",
+            "city",
+            "contract_type",
+            "salary_min",
+            "salary_max",
+            "work_mode",
+            "work_time",
+            "experience_level",
             "description",
         ]
 
@@ -49,12 +74,57 @@ class AdsCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ads
         fields = [
-            "ad_id", "title", "company_id", "category", "city",
-            "contract_type", "salary_min", "salary_max",
-            "work_mode", "work_time", "experience_level",
+            "ad_id",
+            "title",
+            "company_id",
+            "category",
+            "city",
+            "contract_type",
+            "salary_min",
+            "salary_max",
+            "work_mode",
+            "work_time",
+            "experience_level",
             "description",
         ]
         read_only_fields = ["ad_id"]
+
+
+class AdsUpdateSerializer(serializers.ModelSerializer):
+    company_id = serializers.PrimaryKeyRelatedField(
+        queryset=Company.objects.all(),
+        source="company",
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = Ads
+        fields = [
+            "ad_id",
+            "title",
+            "company_id",
+            "category",
+            "city",
+            "contract_type",
+            "salary_min",
+            "salary_max",
+            "work_mode",
+            "work_time",
+            "experience_level",
+            "description",
+        ]
+        read_only_fields = ["ad_id"]
+
+    def validate_company_id(self, company):
+        request = self.context["request"]
+
+        if not request.user.is_staff and company.owner_id != request.user.id:
+            raise serializers.ValidationError(
+                "Vous ne pouvez utiliser que vos propres entreprises."
+            )
+
+        return company
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -67,39 +137,45 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = [
-            "application_id", "ad_id", "message", "application_date",
+            "application_id",
+            "ad_id",
+            "message",
+            "application_date",
         ]
-        read_only_fields = ["application_id", "application_date"]
+        read_only_fields = [
+            "application_id",
+            "application_date",
+        ]
 
     def validate(self, attrs):
         request = self.context["request"]
 
         if not hasattr(request.user, "profile"):
-            raise serializers.ValidationError(
-                {"detail": "Profil utilisateur introuvable."}
-            )
+            raise serializers.ValidationError({
+                "detail": "Profil utilisateur introuvable."
+            })
 
         if request.user.profile.role != "candidate":
-            raise serializers.ValidationError(
-                {"detail": "Seuls les candidats peuvent postuler."}
-            )
+            raise serializers.ValidationError({
+                "detail": "Seuls les candidats peuvent postuler."
+            })
 
         person = Person.objects.filter(
             user=request.user
         ).first()
 
         if person is None:
-            raise serializers.ValidationError(
-                {"detail": "Fiche candidat introuvable."}
-            )
+            raise serializers.ValidationError({
+                "detail": "Fiche candidat introuvable."
+            })
 
         if Application.objects.filter(
             person=person,
-            ad=attrs["ad"],
+            ad=attrs["ad"]
         ).exists():
-            raise serializers.ValidationError(
-                {"detail": "Tu as déjà postulé à cette annonce."}
-            )
+            raise serializers.ValidationError({
+                "detail": "Tu as déjà postulé à cette annonce."
+            })
 
         return attrs
 
@@ -111,8 +187,12 @@ class ApplicationListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = [
-            "application_id", "person", "ad",
-            "message", "application_date",
+            "application_id",
+            "person",
+            "ad",
+            "message",
+            "application_date",
+            "status",
         ]
 
 
@@ -122,7 +202,11 @@ class MyApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = [
-            "application_id", "ad", "message", "application_date",
+            "application_id",
+            "ad",
+            "message",
+            "application_date",
+            "status",
         ]
 
 
@@ -207,27 +291,21 @@ class ProfileSerializer(serializers.ModelSerializer):
 
         if User.objects.filter(
             email__iexact=email
-        ).exclude(
-            pk=self.instance.pk
-        ).exists():
+        ).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError(
                 "Cette adresse e-mail est déjà utilisée."
             )
 
         if Person.objects.filter(
             email__iexact=email
-        ).exclude(
-            user=self.instance
-        ).exists():
+        ).exclude(user=self.instance).exists():
             raise serializers.ValidationError(
                 "Cette adresse e-mail est déjà utilisée."
             )
 
         if User.objects.filter(
             username__iexact=email
-        ).exclude(
-            pk=self.instance.pk
-        ).exists():
+        ).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError(
                 "Cet identifiant de connexion est déjà utilisé."
             )
@@ -240,6 +318,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email",
             instance.email,
         )
+
         new_name = validated_data.get(
             "first_name",
             instance.first_name,
@@ -267,10 +346,12 @@ class ChangePasswordSerializer(serializers.Serializer):
         write_only=True,
         trim_whitespace=False,
     )
+
     new_password = serializers.CharField(
         write_only=True,
         trim_whitespace=False,
     )
+
     confirm_password = serializers.CharField(
         write_only=True,
         trim_whitespace=False,
@@ -286,16 +367,23 @@ class ChangePasswordSerializer(serializers.Serializer):
 
         if attrs["new_password"] != attrs["confirm_password"]:
             raise serializers.ValidationError({
-                "confirm_password": "Les nouveaux mots de passe ne correspondent pas."
+                "confirm_password": (
+                    "Les nouveaux mots de passe ne correspondent pas."
+                )
             })
 
         if attrs["old_password"] == attrs["new_password"]:
             raise serializers.ValidationError({
-                "new_password": "Le nouveau mot de passe doit être différent de l'ancien."
+                "new_password": (
+                    "Le nouveau mot de passe doit être différent de l'ancien."
+                )
             })
 
         try:
-            validate_password(attrs["new_password"], user=user)
+            validate_password(
+                attrs["new_password"],
+                user=user,
+            )
         except DjangoValidationError as error:
             raise serializers.ValidationError({
                 "new_password": error.messages
