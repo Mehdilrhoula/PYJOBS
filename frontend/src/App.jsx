@@ -11,6 +11,7 @@ import Admin from './pages/Admin'
 import CompanyDashboard from './pages/CompanyDashboard'
 import CandidateDashboard from './pages/CandidateDashboard'
 import JobDetails from './pages/JobDetails'
+import Profile from './pages/Profile'
 import './App.css'
 
 function App() {
@@ -60,6 +61,7 @@ function App() {
 
     return () => controller.abort()
   }, [])
+
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
   const [contractType, setContractType] = useState('')
@@ -188,6 +190,7 @@ function App() {
         <Route path="/company/dashboard" element={<CompanyDashboard />} />
         <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
         <Route path="/jobs/:id" element={<JobDetails />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </>
   )

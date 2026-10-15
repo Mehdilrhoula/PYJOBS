@@ -1,3 +1,4 @@
+
 from django.urls import path
 
 from .session_views import SessionView
@@ -14,19 +15,51 @@ from .views import (
     RegisterView,
     LoginView,
     LogoutView,
+    ProfileView,
 )
 
+
 urlpatterns = [
-    path("session/", SessionView.as_view(), name="session"),
-
-    path("register/", RegisterView.as_view(), name="register"),
-    path("login/", LoginView.as_view(), name="login"),
-    path("logout/", LogoutView.as_view(), name="logout"),
-
-    path("ads/", AdsListView.as_view(), name="ads-list"),
-    path("ads/create/", AdsCreateView.as_view(), name="ads-create"),
-    path("ads/<int:ad_id>/", AdsDetailView.as_view(), name="ads-detail"),
-
+    path(
+        "session/",
+        SessionView.as_view(),
+        name="session",
+    ),
+    path(
+        "register/",
+        RegisterView.as_view(),
+        name="register",
+    ),
+    path(
+        "login/",
+        LoginView.as_view(),
+        name="login",
+    ),
+    path(
+        "logout/",
+        LogoutView.as_view(),
+        name="logout",
+    ),
+    path(
+        "profile/",
+        ProfileView.as_view(),
+        name="profile",
+    ),
+    path(
+        "ads/",
+        AdsListView.as_view(),
+        name="ads-list",
+    ),
+    path(
+        "ads/create/",
+        AdsCreateView.as_view(),
+        name="ads-create",
+    ),
+    path(
+        "ads/<int:ad_id>/",
+        AdsDetailView.as_view(),
+        name="ads-detail",
+    ),
     path(
         "companies/create/",
         CompanyCreateView.as_view(),
@@ -37,7 +70,6 @@ urlpatterns = [
         MyCompaniesView.as_view(),
         name="my-companies",
     ),
-
     path(
         "applications/create/",
         ApplicationCreateView.as_view(),

@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
@@ -132,6 +133,22 @@ function Header() {
                   Mes candidatures
                 </Link>
               )}
+
+              {user.role === 'employer' && (
+                <Link
+                  to="/company/dashboard"
+                  className="login-button"
+                >
+                  Espace employeur
+                </Link>
+              )}
+
+              <Link
+                to="/profile"
+                className="login-button"
+              >
+                Mon profil
+              </Link>
 
               <button
                 type="button"

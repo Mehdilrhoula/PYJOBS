@@ -1,10 +1,14 @@
+
 from django.contrib.auth import authenticate, login, logout
 from django.db.models.deletion import ProtectedError
 
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import (
-    AllowAny, BasePermission, IsAdminUser, IsAuthenticated
+    AllowAny,
+    BasePermission,
+    IsAdminUser,
+    IsAuthenticated,
 )
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -19,6 +23,7 @@ from .serializers import (
     CompanySerializer,
     CompanyCreateSerializer,
     RegisterSerializer,
+    ProfileSerializer,
 )
 
 
@@ -34,6 +39,7 @@ class IsAdminOrCompanyOwner(BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.user.is_staff:
             return True
+
         return (
             hasattr(request.user, "profile")
             and request.user.profile.role == "employer"
@@ -60,6 +66,7 @@ class CompanyCreateView(generics.CreateAPIView):
                 "Seuls les employeurs et les administrateurs "
                 "peuvent créer une entreprise."
             )
+
         return super().create(request, *args, **kwargs)
 
 
@@ -70,7 +77,10 @@ class MyCompaniesView(generics.ListAPIView):
     def get_queryset(self):
         if self.request.user.is_staff:
             return Company.objects.all()
-        return Company.objects.filter(owner=self.request.user)
+
+        return Company.objects.filter(
+            owner=self.request.user
+        )
 
 
 class AdsCreateView(generics.CreateAPIView):
@@ -87,6 +97,7 @@ class AdsCreateView(generics.CreateAPIView):
                 "Seuls les employeurs et les administrateurs "
                 "peuvent créer des annonces."
             )
+
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
@@ -111,7 +122,11 @@ class AdsDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_permissions(self):
         if self.request.method in ("GET", "HEAD", "OPTIONS"):
             return [AllowAny()]
-        return [IsAuthenticated(), IsAdminOrCompanyOwner()]
+
+        return [
+            IsAuthenticated(),
+            IsAdminOrCompanyOwner(),
+        ]
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -120,11 +135,17 @@ class AdsDetailView(generics.RetrieveUpdateDestroyAPIView):
             self.perform_destroy(instance)
         except ProtectedError:
             return Response(
-                {"detail": "Cette annonce possède des candidatures."},
+                {
+                    "detail": (
+                        "Cette annonce possède des candidatures."
+                    )
+                },
                 status=status.HTTP_409_CONFLICT,
             )
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
+        )
 
 
 class ApplicationCreateView(generics.CreateAPIView):
@@ -133,12 +154,19 @@ class ApplicationCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
+        if not has_role(self.request.user, "candidate"):
+            raise PermissionDenied(
+                "Seuls les candidats peuvent postuler."
+            )
+
         person = Person.objects.filter(
-            email__iexact=self.request.user.email
+            user=self.request.user
         ).first()
 
         if person is None:
-            raise PermissionDenied("Fiche candidat introuvable.")
+            raise PermissionDenied(
+                "Fiche candidat introuvable."
+            )
 
         serializer.save(person=person)
 
@@ -148,8 +176,13 @@ class MyApplicationsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if not has_role(self.request.user, "candidate"):
+            raise PermissionDenied(
+                "Accès réservé aux candidats."
+            )
+
         person = Person.objects.filter(
-            email__iexact=self.request.user.email
+            user=self.request.user
         ).first()
 
         if person is None:
@@ -157,11 +190,17 @@ class MyApplicationsView(generics.ListAPIView):
 
         return Application.objects.filter(
             person=person
-        ).select_related("ad", "ad__company")
+        ).select_related(
+            "ad",
+            "ad__company",
+        )
 
 
 class ApplicationListView(generics.ListAPIView):
-    queryset = Application.objects.select_related("person", "ad").all()
+    queryset = Application.objects.select_related(
+        "person",
+        "ad",
+    ).all()
     serializer_class = ApplicationListSerializer
     permission_classes = [IsAdminUser]
 
@@ -173,15 +212,21 @@ class EmployerApplicationsView(generics.ListAPIView):
     def get_queryset(self):
         if self.request.user.is_staff:
             return Application.objects.select_related(
-                "person", "ad"
+                "person",
+                "ad",
             ).all()
 
         if not has_role(self.request.user, "employer"):
-            raise PermissionDenied("Accès réservé aux employeurs.")
+            raise PermissionDenied(
+                "Accès réservé aux employeurs."
+            )
 
         return Application.objects.filter(
             ad__company__owner=self.request.user
-        ).select_related("person", "ad")
+        ).select_related(
+            "person",
+            "ad",
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -193,30 +238,48 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get("email", "").strip().lower()
-        password = request.data.get("password", "")
+        email = request.data.get(
+            "email", ""
+        ).strip().lower()
+
+        password = request.data.get(
+            "password", ""
+        )
 
         if not email or not password:
             return Response(
-                {"detail": "L'e-mail et le mot de passe sont obligatoires."},
+                {
+                    "detail": (
+                        "L'e-mail et le mot de passe "
+                        "sont obligatoires."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         user = authenticate(
-            request, username=email, password=password
+            request,
+            username=email,
+            password=password,
         )
 
         if user is None:
             return Response(
-                {"detail": "E-mail ou mot de passe incorrect."},
+                {
+                    "detail": (
+                        "E-mail ou mot de passe incorrect."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         login(request, user)
 
         role = (
-            "admin" if user.is_staff
-            else user.profile.role if hasattr(user, "profile")
+            "admin"
+            if user.is_staff
+            else user.profile.role
+            if hasattr(user, "profile")
             else "candidate"
         )
 
@@ -235,7 +298,24 @@ class LogoutView(APIView):
 
     def post(self, request):
         logout(request)
+
         return Response(
-            {"message": "Déconnexion réussie."},
+            {
+                "message": "Déconnexion réussie."
+            },
             status=status.HTTP_200_OK,
         )
+
+
+class ProfileView(generics.RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = [
+        "get",
+        "patch",
+        "head",
+        "options",
+    ]
+
+    def get_object(self):
+        return self.request.user

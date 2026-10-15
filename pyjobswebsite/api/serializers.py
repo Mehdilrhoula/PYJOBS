@@ -1,3 +1,4 @@
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import serializers
@@ -82,7 +83,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             )
 
         person = Person.objects.filter(
-            email__iexact=request.user.email
+            user=request.user
         ).first()
 
         if person is None:
@@ -91,7 +92,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
             )
 
         if Application.objects.filter(
-            person=person, ad=attrs["ad"]
+            person=person,
+            ad=attrs["ad"],
         ).exists():
             raise serializers.ValidationError(
                 {"detail": "Tu as déjà postulé à cette annonce."}
@@ -125,26 +127,33 @@ class MyApplicationSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(
+        write_only=True,
+        min_length=8,
+    )
     role = serializers.ChoiceField(
         choices=UserProfile.ROLE_CHOICES,
         default="candidate",
     )
 
     def validate_email(self, value):
-        value = value.strip().lower()
+        email = value.strip().lower()
 
-        if User.objects.filter(email__iexact=value).exists():
+        if User.objects.filter(
+            email__iexact=email
+        ).exists():
             raise serializers.ValidationError(
                 "Un compte utilise déjà cette adresse e-mail."
             )
 
-        if Person.objects.filter(email__iexact=value).exists():
+        if Person.objects.filter(
+            email__iexact=email
+        ).exists():
             raise serializers.ValidationError(
-                "Une fiche candidat utilise déjà cette adresse e-mail."
+                "Une fiche utilise déjà cette adresse e-mail."
             )
 
-        return value
+        return email
 
     @transaction.atomic
     def create(self, validated_data):
@@ -160,9 +169,16 @@ class RegisterSerializer(serializers.Serializer):
             first_name=name,
         )
 
-        Person.objects.create(name=name, email=email)
+        Person.objects.create(
+            user=user,
+            name=name,
+            email=email,
+        )
 
-        UserProfile.objects.create(user=user, role=role)
+        UserProfile.objects.create(
+            user=user,
+            role=role,
+        )
 
         return user
 
@@ -172,3 +188,73 @@ class RegisterSerializer(serializers.Serializer):
             "email": instance.email,
             "role": instance.profile.role,
         }
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        source="first_name",
+        max_length=100,
+    )
+
+    class Meta:
+        model = User
+        fields = ["name", "email"]
+
+    def validate_email(self, value):
+        email = value.strip().lower()
+
+        if User.objects.filter(
+            email__iexact=email
+        ).exclude(
+            pk=self.instance.pk
+        ).exists():
+            raise serializers.ValidationError(
+                "Cette adresse e-mail est déjà utilisée."
+            )
+
+        if Person.objects.filter(
+            email__iexact=email
+        ).exclude(
+            user=self.instance
+        ).exists():
+            raise serializers.ValidationError(
+                "Cette adresse e-mail est déjà utilisée."
+            )
+
+        if User.objects.filter(
+            username__iexact=email
+        ).exclude(
+            pk=self.instance.pk
+        ).exists():
+            raise serializers.ValidationError(
+                "Cet identifiant de connexion est déjà utilisé."
+            )
+
+        return email
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        new_email = validated_data.get(
+            "email",
+            instance.email,
+        )
+        new_name = validated_data.get(
+            "first_name",
+            instance.first_name,
+        )
+
+        instance.first_name = new_name
+        instance.email = new_email
+        instance.username = new_email
+        instance.save()
+
+        person = Person.objects.filter(
+            user=instance
+        ).first()
+
+        if person is not None:
+            person.name = new_name
+            person.email = new_email
+            person.save()
+
+        return instance

@@ -7,12 +7,20 @@ class Person(models.Model):
     person_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=254, unique=True)
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="person",
+        null=True,
+        blank=True,
+    )
 
     class Meta:
         db_table = "Person"
 
     def __str__(self):
         return self.name
+
 
 class UserProfile(models.Model):
     ROLE_CHOICES = [
@@ -37,6 +45,7 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.role}"
 
+
 class Company(models.Model):
     company_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=150)
@@ -51,7 +60,8 @@ class Company(models.Model):
 
     def __str__(self):
         return self.name
-    
+
+
 class Ads(models.Model):
     ad_id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=150)
@@ -103,7 +113,6 @@ class Application(models.Model):
         on_delete=models.CASCADE,
         db_column="ad_id",
     )
-
     message = models.TextField()
     application_date = models.DateField(default=timezone.localdate)
 
