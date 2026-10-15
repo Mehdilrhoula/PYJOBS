@@ -52,16 +52,42 @@ Prérequis : Git, Node.js compatible avec Vite 8 et Python compatible avec Djang
 
 Depuis la racine du projet :
 
-1. Se placer dans pyjobswebsite/
-2. Créer un environnement virtuel avec python -m venv .venv
-3. L'activer avec source .venv/bin/activate (Linux/WSL)
-4. Installer les dépendances avec python -m pip install -r requirements.txt
-5. Initialiser la base avec python manage.py migrate
-6. Démarrer Django avec python manage.py runserver
+```bash
+cd pyjobswebsite
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Django est accessible sur http://127.0.0.1:8000.
+Pour utiliser la base de données de démonstration :
 
-Certaines dépendances Microsoft SQL Server et Azure peuvent nécessiter une configuration supplémentaire.
+```bash
+cp db.demo.sqlite3 db.local.sqlite3
+python manage.py migrate
+python manage.py runserver
+```
+
+**Attention :** la commande `cp` remplace une éventuelle base locale existante. Sur une nouvelle installation, elle permet de récupérer directement les données de démonstration.
+
+Django est accessible sur http://127.0.0.1:8000/.
+
+### Comptes de démonstration
+
+| Rôle | Identifiant | Mot de passe |
+|---|---|---|
+| Administrateur | `admin_demo` | `DemoPYJOBS2026!` |
+| Candidat | `candidat_demo` | `DemoPYJOBS2026!` |
+| Recruteur | `recruteur_demo` | `DemoPYJOBS2026!` |
+
+Ces comptes sont fictifs et destinés uniquement à la démonstration du projet.
+
+### Base de données
+
+PYJOBS utilise SQLite pour son fonctionnement local.
+
+Le fichier `script.sql` correspond au schéma SQL Server conçu initialement pour le projet. Il est conservé comme référence de conception, mais n'est pas utilisé par la configuration Django actuelle.
+
+La structure de la base SQLite est gérée par les modèles et les migrations Django.
 
 ### Frontend
 

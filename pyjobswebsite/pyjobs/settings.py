@@ -75,28 +75,10 @@ WSGI_APPLICATION = 'pyjobs.wsgi.application'
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        # Adaptateur Django pour SQL Server
-        'ENGINE': 'mssql',
-
-        # Nom de la base existante
-        'NAME': 'PyJobs',
-
-        # Instance SQL Server locale
-        'HOST': r'.\SQLEXPRESS',
-
-        # Instance SQL Server locale
-        'PORT': '',
-
-        # Pilote ODBC installé sur ton PC
-        'OPTIONS': {
-            'driver': 'ODBC Driver 18 for SQL Server',
-
-            # Chiffrement requis par ODBC 18,
-            # mais certificat local souvent non approuvé en développement
-            'extra_params': 'TrustServerCertificate=yes;',
-        },
-    },
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.local.sqlite3",
+    }
 }
 
 

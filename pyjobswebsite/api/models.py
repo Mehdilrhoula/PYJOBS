@@ -146,16 +146,3 @@ class Application(models.Model):
 
     def __str__(self):
         return f"{self.person} - {self.ad}"
-
-
-    class Meta:
-        db_table = "Application"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["person", "ad"],
-                name="UQ_Application_Person_Ads",
-            ),
-        ]
-
-    def __str__(self):
-        return f"{self.person} - {self.ad}"
