@@ -16,6 +16,7 @@ from .views import (
     LoginView,
     LogoutView,
     ProfileView,
+    ChangePasswordView,
 )
 
 
@@ -44,6 +45,11 @@ urlpatterns = [
         "profile/",
         ProfileView.as_view(),
         name="profile",
+    ),
+    path(
+        "change-password/",
+        ChangePasswordView.as_view(),
+        name="change-password",
     ),
     path(
         "ads/",

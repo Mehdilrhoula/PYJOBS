@@ -1,5 +1,5 @@
 
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.db.models.deletion import ProtectedError
 
 from rest_framework import generics, status
@@ -24,6 +24,7 @@ from .serializers import (
     CompanyCreateSerializer,
     RegisterSerializer,
     ProfileSerializer,
+    ChangePasswordSerializer,
 )
 
 
@@ -319,3 +320,27 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        user.set_password(
+            serializer.validated_data["new_password"]
+        )
+        user.save(update_fields=["password"])
+
+        update_session_auth_hash(request, user)
+
+        return Response(
+            {"message": "Mot de passe modifié avec succès."},
+            status=status.HTTP_200_OK,
+        )

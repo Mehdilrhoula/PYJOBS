@@ -1,6 +1,8 @@
 
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import Ads, Company, Person, Application, UserProfile
@@ -258,3 +260,45 @@ class ProfileSerializer(serializers.ModelSerializer):
             person.save()
 
         return instance
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+    )
+    new_password = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+    )
+    confirm_password = serializers.CharField(
+        write_only=True,
+        trim_whitespace=False,
+    )
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+
+        if not user.check_password(attrs["old_password"]):
+            raise serializers.ValidationError({
+                "old_password": "Le mot de passe actuel est incorrect."
+            })
+
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError({
+                "confirm_password": "Les nouveaux mots de passe ne correspondent pas."
+            })
+
+        if attrs["old_password"] == attrs["new_password"]:
+            raise serializers.ValidationError({
+                "new_password": "Le nouveau mot de passe doit être différent de l'ancien."
+            })
+
+        try:
+            validate_password(attrs["new_password"], user=user)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError({
+                "new_password": error.messages
+            })
+
+        return attrs
